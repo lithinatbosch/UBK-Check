@@ -8,29 +8,34 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.9.0"
+"                        Version : 1.10.0"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.9.0"
+$current_version = "1.10.0"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
-$script:UBKDownlaodPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\ubk_keywords.csv"
-$script:UBKDownloadFolder = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
 $script:DailyCheckIni = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\daily_check.ini"
+$registryPath = "HKCU:\Software\Bosch\UBKCheck"
+$LastUpdateDate = "LastUpdateDate"
 
-#Daily update check and UBK database downloader
-if ((Test-Path $script:DailyCheckIni) -and (((Get-Item $script:DailyCheckIni).LastWriteTime).Date -eq (Get-Date).Date)) {
-    Write-Output "    Latest UBK database present..."
+
+# Check if the registry path exists, if not create it and set last update date to yesterday
+if (-not(Test-Path $registryPath)) {
+    New-Item -Path $registryPath -Force | Out-Null  # Create the registry path if it doesn't exist
+    Set-ItemProperty -Path $registryPath -Name $LastUpdateDate -Value (Get-Date).AddDays(-1).Date
 }
-else {
+# Retrieve registry properties, with error handling in case of failures
+$property = Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue
+
+if (-not $property -or [datetime]$property.$LastUpdateDate -ne (Get-Date).Date) {
     Write-Output "    Daily update check running..."
     $UpdateCheckStatus = $True
     #READING UPDATE CHECK FILE
     try { $FileContent = get-content $IniFilePath -ErrorAction Stop } catch { $UpdateCheckStatus = $False }
     
     #READ SUCCESS
-    if ($UpdateCheckStatus) {
+    if ($UpdateCheckStatus -and $FileContent.Count -ge 2) {
         $Latest_version = $FileContent[0]
         $Location = $FileContent[1]
         if ($Current_version -ne $Latest_version) {
@@ -48,12 +53,24 @@ else {
         #READ FAILED
         Write-Host "    Update check failed, but you are allowed to use current version for now..." -ForegroundColor red
     } 
-    Write-Output "    Downloading latest UBK database..."
-    copy-item \\SGPVMC0521.apac.bosch.com\CloudSearch\DB\ubk_keywords.csv -destination $script:UBKDownloadFolder  
-    Set-content -Path $script:DailyCheckIni -Value (Get-Date).Date
+    # Update the last update date in the registry
+    Set-ItemProperty -Path $registryPath -Name $LastUpdateDate -Value (Get-Date).Date
 }
 
+Write-Output "    Downloading latest UBK database..."
 
+#Database API Link
+$apiUrl = "https://si0vmc0854.de.bosch.com/swap-prod/api/ubk-keywords"
+
+# Make the REST API call and store the response
+try {
+    $script:UBKArray = Invoke-RestMethod -Uri $apiUrl -Method Get
+} catch {
+    Write-Host "    Error occurred while downloading UBK database" -ForegroundColor Red
+    Write-Host "    $_.Exception.Message"
+    Read-Host "    Tool cannot continue, Press any key to exit"
+    Exit
+}
 
 #Getting pavast Inputs
 $Ready = $True
@@ -106,16 +123,24 @@ function Get-CompareDescriptiveName {
 
     # Iterate through the $UBKArray using a foreach loop
     foreach ($item in $script:UBKArray) {
-        if ($item."Abbr Name" -ceq $DescriptiveName -and $item."Life Cycle State" -eq "Valid" -and $item."Domain Name" -eq "AUTOSAR" -and ($item."Element" -eq "x" -or $item."ProperName" -eq "x")) {
+        if ($item.abbrName -ceq $DescriptiveName -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and $item.domainName -eq "AUTOSAR" -and ($item.rbClassifications -eq "Element" -or $item.rbClassifications -eq "ProperName")) {
             # Found an AUTOSAR entry
-            return "<p style='color:$colour'>$DescriptiveName - " + $item."Long Name En" + " (AUTOSAR)</p>"
+            return "<p style='color:$colour'>$DescriptiveName - " + $item.longNameEn + " (AUTOSAR)</p>"
+       }
+     
+    }
+
+    foreach ($item in $script:UBKArray) {
+        if ($item.abbrName -ceq $DescriptiveName -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and $item.domainName -eq "RB" -and ($item.rbClassifications -eq "Element" -or $item.rbClassifications -eq "ProperName")) {
+            # Found an RB entry
+            return "<p style='color:orange'>$DescriptiveName - " + $item.longNameEn + " (RB)</p>" 
         }
     }
 
     foreach ($item in $script:UBKArray) {
-        if ($item."Abbr Name" -ceq $DescriptiveName -and $item."Life Cycle State" -eq "Valid" -and $item."Domain Name" -eq "RB" -and ($item."Element" -eq "x" -or $item."ProperName" -eq "x")) {
+        if ($item.abbrName -ceq $DescriptiveName -and ($item.lifeCycleState -eq "Obsolete" -or $item.lifeCycleState -eq "Removed") -and $item.state -eq "Released"  -and $item.useInsteadAbbrName -ne $null -and ($item.rbClassifications -eq "Element" -or $item.rbClassifications -eq "ProperName")) {
             # Found an RB entry
-            return "<p style='color:orange'>$DescriptiveName - " + $item."Long Name En" + " (RB)</p>"
+            return "<p style='color:red'>$DescriptiveName -  is no more valid, Try using '" +  $item.useInsteadAbbrName +"' instead</p>" 
         }
     }
 
@@ -150,10 +175,18 @@ function Get-Comparepp {
     
     #Normal case
     foreach ($item in $script:UBKArray) {
-        if ( ($item."Logical" -eq "x" -or $item."Physical" -eq "x" ) -and ($item."Life Cycle State" -eq "Valid") -and ($pp -ceq $item."Abbr Name")) {
-            Return "<p style='color:green'>$pp - " + $item."Long Name En" + "</p>"    
+        if ($item.abbrName -ceq $pp -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and ($item.rbClassifications -eq "Physical" -or $item.rbClassifications -eq "Logical")) {
+            Return "<p style='color:green'>$pp - " + $item.longNameEn + "</p>"    
         }
-    }                
+    }
+    
+    foreach ($item in $script:UBKArray) {
+        if ($item.abbrName -ceq $pp -and ($item.lifeCycleState -eq "Obsolete" -or $item.lifeCycleState -eq "Removed") -and $item.state -eq "Released"  -and $item.useInsteadAbbrName -ne $null -and ($item.rbClassifications -eq "Physical" -or $item.rbClassifications -eq "Logical")) {
+            # Found an RB entry
+            return "<p style='color:red'>$pp -  is no more valid, Try using '" +  $item.useInsteadAbbrName +"' instead</p>" 
+        }
+    }
+
     return "<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
 }
 
@@ -201,7 +234,7 @@ function Get-CompareCapitalName {
     param ([string]$DescriptiveName )
   
     foreach ($item in $script:UBKArray) {
-        if ( ($item."Domain Name" -eq "AUTOSAR" -or $item."Domain Name" -eq "RB" ) -and $item."Life Cycle State" -eq "Valid" -and ($item."Abbr Name" -ceq $DescriptiveName)) { 
+             if ($item.abbrName -ceq $DescriptiveName -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and ($item.domainName -eq "RB" -or $item.domainName -eq "AUTOSAR")) { 
             Return "<p style='color:green'>$DescriptiveName - " + $item."Long Name En" + "</p>"
         }
     }
@@ -209,7 +242,7 @@ function Get-CompareCapitalName {
     $DescriptiveNameModified = $DescriptiveName.SubString(0, 1) + $DescriptiveName.SubString(1).ToLower()
  
     foreach ($item in $script:UBKArray) {
-        if ( ($item."Domain Name" -eq "AUTOSAR" -or $item."Domain Name" -eq "RB" ) -and $item."Life Cycle State" -eq "Valid" -and ($item."Abbr Name" -ceq $DescriptiveNameModified)) { 
+                  if ($item.abbrName -ceq $DescriptiveNameModified -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and ($item.domainName -eq "RB" -or $item.domainName -eq "AUTOSAR")) {             
             Return "<p style='color:Blue' >$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified" + "</p>"
         }
     }
@@ -409,7 +442,7 @@ function Get-AnalysisTable{
 
 
 Write-Output "    Reading pavast..."
-$script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
+
 
 [String[]]$Calibrations = @()
 [String[]]$Messages = @()
