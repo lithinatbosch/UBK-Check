@@ -94,7 +94,8 @@ function Get-SplittedArray {
 function Get-ContinuousCapitalArray {
     param ([string[]]$Unsplitted)
     [char[]]$newtext  =@()
-
+    #To take all the values from last of the message
+    $Unsplitted = $Unsplitted +"X"
     [string[]]$StringArray =@()
     [string[]]$ReturnArray=@()
     foreach ($character in $Unsplitted.ToCharArray())
@@ -132,7 +133,7 @@ function Get-CompareCapitalName{
             $script:UBKArray | ForEach-Object {
 
                 if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveNameModified)){ 
-                $Result = "<p style='color:Blue'>$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified - "+$_."Long Name En"+"</p>"}}
+                $Result = "<p style='color:Blue'>$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified"+"</p>"}}
                 }
 
 
