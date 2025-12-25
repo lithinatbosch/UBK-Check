@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.8.4"
+"                        Version : 1.8.5"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.8.4"
+$current_version = "1.8.5"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keywords.csv"
@@ -284,7 +284,7 @@ $PavastData = [xml](Get-Content $PavastFilePath)
 
 $FCName= $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SHORTNAME
  
- $CodeGenerator = ""
+ $CodeGenerator = 'ASCET'
  $PavastData.MSRSW.$ADMINDATA.$COMPANYDOCINFOS.$COMPANYDOCINFO.SDGS.SDG.SD.GID | ForEach-Object {
  if ( $_ -eq 'ASCET-User')
     {
