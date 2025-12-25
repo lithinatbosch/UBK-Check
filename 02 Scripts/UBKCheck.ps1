@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.12.0"
+"                        Version : 1.12.2"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.12.0"
+$current_version = "1.12.2"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -118,36 +118,38 @@ $Id = Read-Host "    <Id> Override value(optional, press enter to skip)"
 
 function Get-CompareDescriptiveName {
     param ([string]$DescriptiveName)
-    # If length is 1 character, user confirmation is requested
+
     $colour = if ($DescriptiveName.Length -eq 1) { "orange" } else { "green" }
 
-    # Iterate through the $UBKArray using a foreach loop
     foreach ($item in $script:UBKArray) {
-        if ($item.abbrName -ceq $DescriptiveName -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and $item.domainName -eq "AUTOSAR" -and ($item.rbClassifications -eq "Element" -or $item.rbClassifications -eq "ProperName")) {
-            # Found an AUTOSAR entry
-            return "<p style='color:$colour'>$DescriptiveName - " + $item.longNameEn + " (AUTOSAR)</p>"
-       }
-     
-    }
+        $isMatch = $item.abbrName -ceq $DescriptiveName
+        $isReleased = $item.state -eq "Released"
+        $isValidClassification = $item.rbClassifications -in @("Element", "ProperName")
 
-    foreach ($item in $script:UBKArray) {
-        if ($item.abbrName -ceq $DescriptiveName -and $item.lifeCycleState -eq "Valid" -and $item.state -eq "Released" -and $item.domainName -eq "RB" -and ($item.rbClassifications -eq "Element" -or $item.rbClassifications -eq "ProperName")) {
-            # Found an RB entry
-            return "<p style='color:orange'>$DescriptiveName - " + $item.longNameEn + " (RB)</p>" 
+        if (-not $isMatch -or -not $isReleased -or -not $isValidClassification) {
+            continue
+        }
+
+        switch ($item.domainName) {
+            "AUTOSAR" {
+                if ($item.lifeCycleState -eq "Valid") {
+                    return "<p style='color:$colour'>$DescriptiveName - $($item.longNameEn) (AUTOSAR)</p>"
+                }
+            }
+            "RB" {
+                if ($item.lifeCycleState -eq "Valid") {
+                    return "<p style='color:orange'>$DescriptiveName - $($item.longNameEn) (RB)</p>"
+                }
+            }
+        }
+
+        if ($item.lifeCycleState -in @("Obsolete", "Removed") -and $null -ne $item.useInsteadAbbrName) {
+            return "<p style='color:red'>$DescriptiveName ($($item.longNameEn)) - is no more valid, Try using '$($item.useInsteadAbbrName)' instead</p>"
         }
     }
 
-    foreach ($item in $script:UBKArray) {
-        if ($item.abbrName -ceq $DescriptiveName -and ($item.lifeCycleState -eq "Obsolete" -or $item.lifeCycleState -eq "Removed") -and $item.state -eq "Released"  -and $item.useInsteadAbbrName -ne $null -and ($item.rbClassifications -eq "Element" -or $item.rbClassifications -eq "ProperName")) {
-            # Found an RB entry
-            return "<p style='color:red'>$DescriptiveName -  is no more valid, Try using '" +  $item.useInsteadAbbrName +"' instead</p>" 
-        }
-    }
-
-    # If no AUTOSAR or RB entry was found
     return "<p style='color:red'>$DescriptiveName - not present in UBK abbreviations </p>"
 }
-
     
     
 
@@ -278,18 +280,34 @@ function Get-CompareCapitalName {
    
 function Get-LengthCheckResult {
     param ([string]$CIdentifier)
-    
+
     $Sections = $CIdentifier.Split('_')
-    $Result = "<table align='left'><tr><td colspan='3' style='color:#486350;font-weight:bold;text-align: center;'>Length Check</td></tr>"
-    $Result += "<tr style='color:#486350;'><td>Section</td><td>Length</td><td>Status</td></tr>"   
-    foreach ($Section in $Sections){
+    
+    $Result = @"
+<div style='display:inline-block; text-align:left; border:1px solid #ccc;'>
+    <div style='font-weight:bold; text-align:center; color:#486350; padding:6px; ; border-bottom:1px solid #ccc;'>Length Check (<21)</div>
+    <div style='display:flex; font-weight:bold; color:#486350; border-bottom:1px solid #ccc;'>
+        <div style='width:150px; padding:4px; border-right:1px solid #ccc;'>Section</div>
+        <div style='width:80px; padding:4px; border-right:1px solid #ccc;'>Length</div>
+        <div style='width:80px; padding:4px;'>Status</div>
+    </div>
+"@
+
+    foreach ($Section in $Sections) {
         $Length = $Section.Length
         $Color = if ($Length -gt 20) { "red" } else { "green" }
         $Status = if ($Length -gt 20) { "Failed" } else { "Passed" }
-        # Use string interpolation for readability
-        $Result += "<tr><td style='color:$Color;'>$Section</td><td style='color:$Color;'>$Length</td><td style='color:$Color;'>$Status</td></tr>"
+
+        $Result += @"
+    <div style='display:flex; color:$Color; border-bottom:1px solid #eee;'>
+        <div style='width:150px; padding:4px; border-right:1px solid #ccc;'>$Section</div>
+        <div style='width:80px; padding:4px; border-right:1px solid #ccc;'>$Length</div>
+        <div style='width:80px; padding:4px;'>$Status</div>
+    </div>
+"@
     }
-    $Result += "</table>"
+
+    $Result += "</div>"
     return $Result
 }
 
