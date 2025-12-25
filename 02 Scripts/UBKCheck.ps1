@@ -1,5 +1,34 @@
-﻿
-$PavastFilePath  = Read-Host 'Pavast File Path'
+﻿"
+             ______   _          _______           _______  _______  _       
+   |\     /|(  ___ \ | \    /\  (  ____ \|\     /|(  ____ \(  ____ \| \    /\
+   | )   ( || (   ) )|  \  / /  | (    \/| )   ( || (    \/| (    \/|  \  / /
+   | |   | || (__/ / |  (_/ /   | |      | (___) || (__    | |      |  (_/ / 
+   | |   | ||  __ (  |   _ (    | |      |  ___  ||  __)   | |      |   _ (  
+   | |   | || (  \ \ |  ( \ \   | |      | (   ) || (      | |      |  ( \ \ 
+   | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
+   (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
+   "A small tool to check naming conventions"
+   "Contact : lpd5kor"
+
+
+$Ready = $True
+
+While($Ready)
+{
+
+$PavastFilePath  = Read-Host "Pavast file path"
+
+if($PavastFilePath -ne "")
+{
+if(Test-Path $PavastFilePath -PathType leaf){
+
+if($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml"){$Ready = $False}Else{"Please enter a valid pavast path"}
+
+}
+else{"Please enter a valid pavast path"}
+}
+
+}
 
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
@@ -39,7 +68,7 @@ function Get-IdCompareResult {
 function Get-Comparepp {
     param ([string[]]$pp)
          
-    $Result ="<p style='color:red'> $pp - not a valid Physical or Logical '<pp>' </p>"
+    $Result ="<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
     $script:UBKArray | ForEach-Object {
         if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name")){ $Result = "<p style='color:green'>$pp - "+$_."Long Name En"+"</p>"}
         }
@@ -112,7 +141,7 @@ function Get-CompareCapitalName{
     }
 
 
-echo "Analysis running..."
+echo "Reading pavast..."
 $script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
 
 [String[]]$Calibrations = @()
@@ -175,7 +204,7 @@ else
    Break
 }
 
-
+echo "Analyzing messages..."
 
 #break
 <#
@@ -225,7 +254,18 @@ font-size:300%;
 
 <title>UBK check report</title>
 </head>
-<body><p class='fcname'>$FCName</p>
+<body>
+
+<table><tr><th>Instructions</th></tr><tr style='text-align:center'><td>Only local static variables, exported messages and calibrations are checked. </br>Colors used and their meanings
+<p style='color:Green'>All Ok</p>
+<p style='color:Blue'>Suggestion</p>
+<p style='color:Red'>Error</p>
+<p style='color:Orange'>User confirmation needed</p>
+</td></tr></table>
+
+
+
+<p class='fcname'>$FCName</p>
 
 <table><tr><th>Variables</th><th>Findings</th></tr>"
 
@@ -282,7 +322,7 @@ $reportHTML += '</td>'}
 
 $reportHTML += '</table></br></br><table><tr><th>Calibrations</th><th>Findings</th></tr>'
 
-
+echo "Analyzing calibrations..."
 
 $Counter = 0
 while ($Counter -lt $Calibrations.Length) {
