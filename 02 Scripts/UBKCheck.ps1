@@ -1,5 +1,5 @@
-﻿"
-             ______   _          _______           _______  _______  _       
+﻿
+"             ______   _          _______           _______  _______  _       
    |\     /|(  ___ \ | \    /\  (  ____ \|\     /|(  ____ \(  ____ \| \    /\
    | )   ( || (   ) )|  \  / /  | (    \/| )   ( || (    \/| (    \/|  \  / /
    | |   | || (__/ / |  (_/ /   | |      | (___) || (__    | |      |  (_/ / 
@@ -7,17 +7,60 @@
    | |   | || (  \ \ |  ( \ \   | |      | (   ) || (      | |      |  ( \ \ 
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
-                 "Tool for naming convention check"
-                        "Version : 1.5.5"
-   "For help, suggestions and improvements please contact 'lpd5kor'"
+"                 Tool for naming convention check"
+"                        Version : 1.5.6"
+"    For help, suggestions and improvements please contact 'lpd5kor'" 
 
+$current_version = "1.5.6"
+$Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
+$script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
+$IniFilePath = "\\bosch.com\dfsrb\DfsIN\LOC\Kor\BE-ES\EEI_EC\05_Global\02_External\Tools\UBKCheck\ubkcheck_current_ver.ini"
+
+#Daily update check and UBK database downloader
+if((Test-Path $script:UBKDownlaodPath) -and (((Get-Item $script:UBKDownlaodPath).LastWriteTime).Date -eq (Get-Date).Date)){
+    echo "    Latest UBK database present..."
+}
+else
+{
+    Echo "    Daily update check running..."
+    $UpdateCheckStatus = $True
+    #READING UPDATE FILE
+    try{$FileContent = get-content $IniFilePath -ErrorAction Stop} catch {$UpdateCheckStatus = $False}
+    
+    #READ SUCCESS
+    if($UpdateCheckStatus){
+        $Latest_version = $FileContent[0]
+        $Location = $FileContent[1]
+        if($Current_version -ne $Latest_version)
+            {
+            Echo "    A new update found, Downloading the update..."
+            Copy-item $Location
+            Echo "    Please use the latest tool Version : UBKCheck - $Latest_version ... (downloaded in the same folder)"
+            Read-Host "    Press any key to exit..."
+            Exit
+            }
+        else
+            {
+            Echo "    No new update..."
+            }
+        }
+    else
+        {
+        #READ FAILED
+        Write-Host "    Update check failed, you are allowed to use current version for now..." -ForegroundColor red
+        }    
+    echo "    Downloading latest UBK database..."
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest "http://rb-ubkklpro.de.bosch.com:38121/apex/f?p=2100:205:0::NO:::" -outfile $script:UBKDownlaodPath -ErrorAction Stop
+    Write-Host "    Download complete..." -ForegroundColor green
+}
 
 $Ready = $True
 
 While($Ready)
 {
 
-$PavastFilePath  = Read-Host "Pavast file path"
+$PavastFilePath  = Read-Host "    Pavast file path"
 
 if($PavastFilePath -ne "")
 {
@@ -26,25 +69,11 @@ if(Test-Path $PavastFilePath -PathType leaf){
 if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"Please enter a valid pavast  file path"}
 
 }
-else{"Please enter a valid pavast file path"}
+else{"    Please enter a valid pavast file path"}
 }
 
 }
 
-$Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
-$script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
-
-#If not downloaded today download again
-if((Test-Path $script:UBKDownlaodPath) -and (((Get-Item $script:UBKDownlaodPath).LastWriteTime).Date -eq (Get-Date).Date)){
-    echo "Latest UBK database present..."
-}
-else
-{
-    echo "Downloading latest UBK database..."
-    $ProgressPreference = 'SilentlyContinue'
-    Invoke-WebRequest "http://rb-ubkklpro.de.bosch.com:38121/apex/f?p=2100:205:0::NO:::" -outfile $script:UBKDownlaodPath -ErrorAction Stop
-    echo "Download complete..."
-}
 
 
 function Get-CompareDescriptiveName {
@@ -180,7 +209,7 @@ function Get-CompareCapitalName{
    }
 
 
-echo "Reading pavast..."
+echo "    Reading pavast..."
 $script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
 
 [String[]]$Calibrations = @()
@@ -257,11 +286,11 @@ elseif($CodeGenerator -eq 'MATLAB')
 }
 else
 {
-   Echo "Cannot read Pavast"
+   Echo "    Cannot read Pavast"
    Break
 }
 
-echo "Analyzing messages..."
+echo "    Analyzing messages..."
 
 #break
 <#
@@ -286,7 +315,7 @@ table {
 
 td, th {
   border: 1px solid #ddd;
-  padding: 2px;
+  padding: 2px 14px;
   width: 50%;
 }
 
@@ -307,12 +336,55 @@ color:purple;
 font-size:300%;
 }
 
+div.warning {
+background-color: #fff;
+margin:auto;
+width:800px;
+margin-top: 40vh;
+padding: 0px 0px 20px 0px;
+box-shadow: 0 0 20px 0 rgba(0,0,0,2);
+border-radius: 14px;
+font-family: 'Trebuchet MS', Arial, Helvetica, sans-serif;
+}
+
+div.warninghead {
+padding-top: 8px;
+padding-left: 10px;
+padding-bottom: 8px;
+border-radius: 12px 12px 0px 0px;
+text-align: left;
+background-color: #4CAF50;
+color: white;'
+}
+
+button.understand {
+color: #fff;
+background-color: #5cb85c; 
+border-radius: 3px;
+border: none;
+padding: 10px 24px;
+border-color: #4cae4c;
+}
+
 </style>
 
-<title>UBK check report</title>
-</head>
-<body>
+<title>UBKCheck report</title>
 
+</head>
+<body style='background-color: #ececec;'>
+
+<center>
+<div id='Div1' class='warning'>
+<div class='warninghead' >Please note !</div>
+<ul style='color:#5e5e5e;text-align: left;padding:12px 12px 12px 30px;'>
+  <li>The created report can only be used as an additional reference for your implementation. A manual check of the variables are still advised.</li>
+  <li>The tool does not seperate newly added variables and existing variables, If you are updating the name of existing variables extra care must be taken to check to see if it impacts anywhere else.</li>
+  <li>Class instance names and instance specific variables are not checked in the current tool.</li>
+</ul> 
+<button onclick='MakeVisible()' class ='understand'>I Understand</button></div></center>
+
+
+<div style='visibility: hidden;  opacity: 0;  transition: visibility 1s, opacity 1s linear;' id='Div2'>
 <table><tr><th>Instructions</th></tr><tr style='text-align:center'><td>Only local static variables, exported messages and calibrations are checked. </br>Colors used and their meanings
 <p style='color:Green'>All Ok</p>
 <p style='color:Blue'>Suggestion</p>
@@ -380,7 +452,7 @@ $reportHTML += '</td>'}
 
 $reportHTML += '</table></br></br><table><tr><th>Calibrations</th><th>Findings</th></tr>'
 
-echo "Analyzing calibrations..."
+echo "    Analyzing calibrations..."
 
 $Counter = 0
 while ($Counter -lt $Calibrations.Length) {
@@ -437,12 +509,28 @@ while ($Counter -lt $Calibrations.Length) {
     $reportHTML += '</td>'
 }
 
+$reportHTML += ' </tr></table></div><script>
+function MakeVisible() {
+    var x = document.getElementById("Div1");
+    var y = document.getElementById("Div2");
+    y.style.visibility ="visible"
+    y.style.opacity = 1
+    x.style.display = "block";
+    x.style.display = "none";
+}
+</script></body></html>'
 
 
-$reportHTML += ' </tr></table></body></html>'
+#### Automation Tracking #####
+$uri = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=UBKCheck&userId="+$env:UserName+"&componentName="+$FCName+"&result=done"
+        $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
+        [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
+       if( Invoke-WebRequest $uri -Method GET){}
+#### Tracking Ends here #####
+
 
 #Final writing of test report
-
+Echo "    Opening report ... "
 if (Test-Path $Script:htmlPath -PathType leaf){
 remove-item $Script:htmlPath
 }
