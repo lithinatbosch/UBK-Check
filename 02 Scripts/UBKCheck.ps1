@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.8.6"
+"                        Version : 1.8.7"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.8.6"
+$current_version = "1.8.7"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keywords.csv"
@@ -772,11 +772,12 @@ document.getElementById("WarningCount").innerHTML = WarningCount;
 
 
 #### Automation Tracking #####
-$uri = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=ubkcheck&userId="+$env:UserName+"&componentName="+$FCName+"&result=done"
-$uri = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/save?toolId=ubkcheck&userId=" + $env:UserName
+$uriFeatureTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=ubkcheck&userId="+$env:UserName+"&componentName="+$FCName+"&result="+$current_version + "-P"
+$uriCountTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/save?toolId=ubkcheck&userId=" + $env:UserName
         $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
         [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
-        if(Invoke-WebRequest $uri -Method GET){}
+        if(Invoke-WebRequest $uriFeatureTracking -Method GET){}
+        if(Invoke-WebRequest $uriCountTracking -Method GET){}
 #### Tracking Ends here #####
 
 
