@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.7.0"
+"                        Version : 1.8.1"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.7.0"
+$current_version = "1.8.1"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
@@ -65,6 +65,27 @@ While($Ready){
             Else{Echo "    Please enter a valid pavast file path"}
         }
         else{Echo "    Please enter a valid pavast file path"}
+        }
+    }
+
+$Ready = $True
+$BaseCompareActive = $False
+While($Ready){
+    echo " "
+    $BasePavastFilePath  = Read-Host "    Base Pavast file path (optional, press enter to skip)"
+    $BasePavastFilePath = $BasePavastFilePath.Trim('"') #Why? To support drag and drop files with spaces in the path
+
+    if($BasePavastFilePath -ne ""){
+        if(Test-Path $BasePavastFilePath -PathType leaf){
+            if(($BasePavastFilePath.Substring($BasePavastFilePath.Length - 11) -eq "_pavast.xml") -or ($BasePavastFilePath.Substring($BasePavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False
+            $BaseCompareActive = $True}
+            Else{Echo "    Please enter a valid pavast file path"}
+        }
+        else{Echo "    Please enter a valid pavast file path"}
+        }
+        else
+        {
+        $Ready = $false
         }
     }
 
@@ -224,6 +245,8 @@ $script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
 
 [String[]]$Calibrations = @()
 [String[]]$Messages = @()
+[String[]]$BaseCalibrations = @()
+[String[]]$BaseMessages = @()
 
 
 
@@ -298,6 +321,72 @@ else
 {
    Echo "    Cannot read Pavast"
    Exit
+}
+
+#Reading Base pavast file
+if($BaseCompareActive){
+$PavastData = [xml](Get-Content $BasePavastFilePath)
+
+
+$BaseFCName= $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SHORTNAME
+ 
+ $CodeGenerator = ""
+ $PavastData.MSRSW.$ADMINDATA.$COMPANYDOCINFOS.$COMPANYDOCINFO.SDGS.SDG.SD.GID | ForEach-Object {
+ if ( $_ -eq 'ASCET-User')
+    {
+    $CodeGenerator = 'ASCET'
+    
+    }
+ elseif ( $_ -eq 'MATLAB-User')
+    {
+    $CodeGenerator = 'MATLAB'
+    }
+
+}
+
+
+if($CodeGenerator -eq 'ASCET')
+{
+    $BaseCalibrations = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREFSYSCOND.$SWCALPRMREF
+    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF.length -gt 0)
+    {
+    $BaseCalibrations += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF
+    }
+    $BaseMessages = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREFSYSCOND.$SWVARIABLEREF
+    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF.length -gt 0)
+    {
+    $BaseMessages += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF
+    }
+}
+elseif($CodeGenerator -eq 'MATLAB')
+{ 
+    $BaseCalibrations = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREFSYSCOND.$SWCALPRMREF
+    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF.length -gt 0)
+    {
+    $BaseCalibrations += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF
+    }
+    $BaseMessages = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREFSYSCOND.$SWVARIABLEREF
+    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF.length -gt 0)
+    {
+     $BaseMessages += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF
+    }
+}
+else
+{
+   Echo "    Cannot read base Pavast"
+   Exit
+}
+}
+else
+{
+$BaseCalibrations = $Calibrations
+$BaseMessages = $Messages
+}
+if($BaseCompareActive -and $FCName -ne $BaseFCName)
+{
+    Echo "    Wrong base pavast file used"
+    $BaseCalibrations = $Calibrations
+    $BaseMessages = $Messages
 }
 
 echo "    Analyzing messages..."
@@ -397,9 +486,9 @@ border-color: #4cae4c;
 <table class='legend'><tbody style='text-align:center'>
 <tr ><th colspan='3' style='text-align:center'>Legend and statistics</th></tr>
 <tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckOk' checked='true'checked='true'/></td><td><p style='color:Green'>All Ok</p></td><td id='OkCount'>16</td></tr>
-<tr><td  style='width:10%'> <input type='checkbox'  onchange='ApplyFilter()' id='CheckSuggest' checked='true'/></td><td><p style='color:Blue'>Suggestion</p></td><td id='SuggestionCount'>0</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckSuggest' checked='true'/></td><td><p style='color:Blue'>Suggestion</p></td><td id='SuggestionCount'>0</td></tr>
 <tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckError' checked='true'/> </td><td><p style='color:Red'>Error</p></td><td id='ErrorCount'>37</td></tr>
-<tr><td  style='width:10%'> <input type='checkbox'  onchange='ApplyFilter()' id='CheckWarning' checked='true'/></td><td><p style='color:Orange'>User confirmation needed</p></td><td id='WarningCount'>27</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckWarning' checked='true'/></td><td><p style='color:Orange'>User confirmation needed</p></td><td id='WarningCount'>27</td></tr>
 </tbody></table>
 
 
@@ -416,9 +505,30 @@ while ($Counter -lt $Messages.Length) {
     
     $MessageParts =@()
     $MessageParts = $Messages[$Counter].Split('_')
+
+
+    $BaseCounter =0
+    $MessageFound = $False
+    while($BaseCounter -lt $BaseMessages.Length -and $MessageFound -eq $False)
+        {
+        if($BaseMessages[$BaseCounter] -eq $Messages[$Counter])
+        {
+        $MessageFound = $True
+        }
+
+        $BaseCounter ++
+        }
     
     #First column
+    if($MessageFound)
+    {
     $reportHTML += '<tr><td>'+ $Messages[$Counter] +'</td><td>'
+    }
+    else
+    {
+    $reportHTML += '<tr style="background-color:orange" ><td>'+ $Messages[$Counter] +'</td><td>'
+    }
+
        
     #Checking number of underscores in variables.
     if($MessageParts.Length -gt 3 -or $MessageParts.Length -lt 2){ $reportHTML += "<p style='color:red' >DGS recommend maximum of 2 '_'s and minimum one '_'. </br>No other checks executed.</p>";$Counter++;Continue}
@@ -469,8 +579,27 @@ while ($Counter -lt $Calibrations.Length) {
     
     [String[]]$CalibrationParts = $Calibrations[$Counter].Split('_')
     
+    $BaseCounter =0
+    $CalibrationFound = $False
+    while($BaseCounter -lt $BaseCalibrations.Length -and $CalibrationFound -eq $False)
+        {
+        if($BaseCalibrations[$BaseCounter] -eq $Calibrations[$Counter])
+        {
+        $CalibrationFound = $True
+        }
+
+        $BaseCounter ++
+        }
+    
     #First column
+    if($CalibrationFound)
+    {
     $reportHTML += '<tr><td>'+ $Calibrations[$Counter] +'</td><td>' 
+    }
+    else
+    {
+    $reportHTML += '<tr style="background-color:orange" ><td>'+ $Calibrations[$Counter] +'</td><td>' 
+    }
 
     #Checking number of underscores in variables.
     if($CalibrationParts.Length -ne 3){$reportHTML += "<p style='color:red'>Should have exact 2 '_'s in the name. </br>No other checks executed</p>";$Counter++;Continue}
