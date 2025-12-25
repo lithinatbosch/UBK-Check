@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.8.2"
+"                        Version : 1.8.3"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.8.2"
+$current_version = "1.8.3"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keywords.csv"
@@ -225,15 +225,22 @@ function Get-CompareCapitalName{
     
   function Get-LengthCheckResult{
     param ( [string]$CIdentifier )
+    $Sections = $CIdentifier.Split('_')
     $Result =""
-     if($CIdentifier.Length -gt 60)
+
+    $BaseCounter = 0
+    while($BaseCounter -lt $Sections.Length)
         {
-        $Result = "<p style='color:red;font-weight: bold;' >Length check result : Failed (Length : "+$CIdentifier.Length+")</p>"
-        }
-     else
+        if($Sections[$BaseCounter].Length -gt 20)
         {
-        $Result = "<p style='color:green;font-weight: bold;'>Length check result : Ok (Length : "+$CIdentifier.Length+")</p>"
+        $Result = $Result + "<p style='color:red;font-weight: bold;' >Length of '" + $Sections[$BaseCounter]+"' : " + $Sections[$BaseCounter].Length + " (Failed (>20))</p>"
         }
+        else
+        {
+        $Result = $Result + "<p style='color:green;font-weight: bold;'>Length of '" + $Sections[$BaseCounter]+"' : "+$Sections[$BaseCounter].Length +" (Ok (<=20))</p>"
+       }
+        $BaseCounter ++
+   }
      return $Result
    }
 
