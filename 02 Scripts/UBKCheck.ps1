@@ -1,4 +1,20 @@
-﻿$Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
+﻿
+$PavastFilePath  = Read-Host 'Pavast File Path'
+
+$Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
+$script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
+
+#If not downloaded today download again
+if((Test-Path $script:UBKDownlaodPath) -and (((Get-Item $script:UBKDownlaodPath).LastWriteTime).Date -eq (Get-Date).Date)){
+    echo "Latest UBK database already present..."
+}
+else
+{
+    echo "Downloading latest UBK database..."
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest "http://rb-ubkklpro.de.bosch.com:38121/apex/f?p=2100:205:0::NO:::" -outfile $script:UBKDownlaodPath -ErrorAction Stop
+    echo "Download complete..."
+}
 
 
 function Get-CompareDescriptiveName {
@@ -12,16 +28,23 @@ function Get-CompareDescriptiveName {
     }
 
 
+function Get-IdCompareResult {
+    param ([string]$MessagePartIn, [string]$idIn )
+     if($MessagePartIn -ceq $idIn) {$Result= "<p style='color:green'>"+ $MessagePartIn +"</p>" } else {$Result = "<p style='color:red'>"+ $MessagePartIn + " - <Id> not equal to $idIn (Id)</p>"}
+     Return $Result
+    }
+
+
 #Checking the validity of pp
 function Get-Comparepp {
     param ([string[]]$pp)
          
-    $Result ="<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
+    $Result ="<p style='color:red'> $pp - not a valid Physical or Logical '<pp>' </p>"
     $script:UBKArray | ForEach-Object {
         if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name")){ $Result = "<p style='color:green'>$pp - "+$_."Long Name En"+"</p>"}
         }
 
-   if($pp -eq 'r'){$Result = "<p style='color:blue'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
+   if($pp -eq 'r'){$Result = "<p style='color:Orange'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
    return $Result
     }
 
@@ -29,7 +52,6 @@ function Get-Comparepp {
 function Get-SplittedArray {
     param ([string[]]$Unsplitted)
     [char[]]$newtext  =@()
-    $Final = @()
     foreach ($character in $Unsplitted.ToCharArray())
         {
         if ([Char]::IsUpper($character)){$newtext +='*'}
@@ -40,187 +62,58 @@ function Get-SplittedArray {
     return $Result.Split('*')
     }
 
+function Get-ContinuousCapitalArray {
+    param ([string[]]$Unsplitted)
+    [char[]]$newtext  =@()
 
-
-
-
-
-
-
-[xml]$xaml = @"
-<Window
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    x:Name="windowCheckName"
-    Title=" Naming conventions" 
-    Height="Auto"
-    Width="500" 
-    WindowStyle="ToolWindow" 
-    Background="White" 
-    ResizeMode = "NoResize"
-    SizeToContent="Height" >
-
-    <!-- Border start -->
-    <Border Padding="10" >
-        <StackPanel>
-        <TextBlock Text="UBK CSV path : "></TextBlock>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBox x:Name = "TextboxCSVPath"
-                Width="Auto"
-                Padding ="3"
-                Margin ="0 3 10 10"
-                TextWrapping="Wrap"
-                Grid.Column="0"
-                Grid.Row="0" />
-
-                <Button x:Name = "ButtonCSVBrowse"
-                Content="Browse"
-                Margin ="0 3 5 10"
-                Height = "25"
-                Grid.Column="1"
-                Grid.Row="0" 
-                Background="LightBlue" 
-                BorderBrush="Blue" 
-                BorderThickness=".5" />
-            </Grid>
-        <TextBlock Text="Pavast file path : "></TextBlock>
-        
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name = "TextboxPavastPath"
-                Width="Auto"
-                Grid.Column="0"
-                Padding ="3"
-                TextWrapping="Wrap"
-                Margin ="0 3 10 10"
-                Grid.Row="0"/>
-                <Button x:Name = "ButtonPavastBrowse"
-                Content="Browse"
-                Margin ="0 3 5 10"
-                Height = "25"
-                Grid.Row="0"
-                Grid.Column="1"
-                Background="LightBlue" 
-                BorderBrush="Blue" 
-                BorderThickness=".5" />
-            </Grid>
-    
-    
-     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        
-        
-        <Button x:Name = "ButtonStartRun"
-            Content="Run"
-            Grid.Column="0"
-            Margin ="175 5 175 0"
-            Padding ="10"
-            Grid.Row="0"
-            Background="LightBlue" 
-            BorderBrush="Blue" 
-            BorderThickness=".5"/>
-        
-    </Grid>
-    
-    </StackPanel>
-
-    </Border>
-</Window>
-"@
-$XmlReader = (New-Object System.Xml.XmlNodeReader $xaml)
-[System.Reflection.Assembly]::LoadWithPartialName(‘PresentationFramework’) | Out-Null
-$Window = [Windows.Markup.XamlReader]::Load($XmlReader)
-$WindowName = $window.FindName("windowCheckName")
-$BrowseCSVButton = $window.FindName("ButtonCSVBrowse")
-$BrowsePavastButton = $window.FindName("ButtonPavastBrowse")
-$RunButton = $Window.FindName("ButtonStartRun")
-$PavastPathText = $window.FindName("TextboxPavastPath")
-$CSVPathText = $window.FindName("TextboxCSVPath")
-
-
-#Action during browsing the CSV file
-$BrowseCSVFileClick ={
-        [Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
-        [System.Windows.Forms.Application]::EnableVisualStyles()
-        $Browse = New-Object System.Windows.Forms.OpenFileDialog
-        $Browse.filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
-        $Browse.InitialDirectory = "C:\Users\"+$env:USERNAME.ToLower()+"\Downloads"
-        $Loop = $True
-        while($Loop){
-            if ($Browse.ShowDialog() -eq "OK"){
-                $Loop = $False
-		        $CSVPathText.Text = $Browse.FileName                              
-                } 
-            else{
-                return
-                }
-            }
-        $Browse.Dispose()
-        } 
-    
-$BrowseCSVButton.Add_Click($BrowseCSVFileClick)  
-
-#Action during browsing the Pavast File
-$BrowsePavastFileClick ={
-        [Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
-        [System.Windows.Forms.Application]::EnableVisualStyles()
-        $Browse = New-Object System.Windows.Forms.OpenFileDialog
-        $Browse.filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*"
-        $Browse.InitialDirectory = "C:\temp\" + $env:USERNAME.ToLower()
-        $Loop = $True
-        while($Loop){
-            if ($Browse.ShowDialog() -eq "OK") {
-                $loop = $False
-		        $PavastPathText.Text= $Browse.FileName 
-                }
-            else{
-                return
-                }
-            }
-        $Browse.Dispose()
-        return
+    [string[]]$StringArray =@()
+    [string[]]$ReturnArray=@()
+    foreach ($character in $Unsplitted.ToCharArray())
+        {
+        if ([Char]::IsUpper($character)){$newtext += $character;$Once=$True;}else{if($Once){$newtext += "*";$Once=$False} }
         }
-      
-$BrowsePavastButton.Add_Click($BrowsePavastFileClick)
+    $Result = -Join $newtext
+    $Result = $Result.Trim('*')
+    $StringArray=  $Result.Split('*')
+
+    $Count = 0
+    while($Count -lt $StringArray.Length)
+        {
+        if($StringArray[$Count].Length -gt 2){$ReturnArray += $StringArray[$Count].SubString(0,$StringArray[$Count].Length -1)}
+        $Count++
+        }
 
 
+    return $ReturnArray
+    }
 
-$RunClick = {
+function Get-CompareCapitalName{
+    param ( [string]$DescriptiveName )
 
-$RunButton.IsEnabled = $False
-$RunButton.Content ="Running.."
-$WindowName.Dispatcher.Invoke([Action]{},"Render")
+    $Result =""
+  
+    $script:UBKArray | ForEach-Object {
+        if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveName)){ 
+        $Result = "<p style='color:green'>$DescriptiveName - "+ $_."Long Name En"+"</p>"
+        }
+     }
+     $DescriptiveNameModified = $DescriptiveName.SubString(0,1) + $DescriptiveName.SubString(1, $DescriptiveName.Length - 1).ToLower()
+ 
+     if($Result -eq ""){
+            $script:UBKArray | ForEach-Object {
+
+                if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveNameModified)){ 
+                $Result = "<p style='color:Blue'>$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified - "+$_."Long Name En"+"</p>"}}
+                }
 
 
+    if($Result -eq ""){"<p style='color:red'>$DescriptiveName - not present in UBK abbrevations</p>"}
+    return $Result
+    }
 
-$UBKCsvPath =  $CSVPathText.Text
-$PavastFilePath = $PavastPathText.Text
 
-$script:UBKArray = Import-Csv $UBKCsvPath -delimiter ";"
+echo "Analysis running..."
+$script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
 
 [String[]]$Calibrations = @()
 [String[]]$Messages = @()
@@ -248,7 +141,7 @@ $SWVARIABLEREF = 'SW-VARIABLE-REF'
 
 $PavastData = [xml](Get-Content $PavastFilePath)
 
-$AdminDataRead = @()
+
 $FCName= $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SHORTNAME
  
  $CodeGenerator = ""
@@ -278,8 +171,8 @@ elseif($CodeGenerator -eq 'MATLAB')
 }
 else
 {
-    "Cannot read Pavast"
-    Break
+   Echo "Cannot read Pavast"
+   Break
 }
 
 
@@ -337,31 +230,52 @@ font-size:300%;
 <table><tr><th>Variables</th><th>Findings</th></tr>"
 
 while ($Counter -lt $Messages.Length) {
+
+    #Ignoring class instance variables in matlab generated pavast - 
+    ###Needs better way to identify class instances
+    if($Messages[$Counter].Substring($Messages[$Counter].Length - 2) -ceq '_I'){$Counter++;continue}
+    
     $MessageParts =@()
     $MessageParts = $Messages[$Counter].Split('_')
+    
+    #First column
     $reportHTML += '<tr><td>'+ $Messages[$Counter] +'</td><td>'
        
-    #Checking <Id> Matching FC Name
-    if($MessageParts[0] -ceq $Id){$reportHTML += "<p style='color:green'>"+ $MessageParts[0] +"</p>" }else{$reportHTML += "<p style='color:red'>"+ $MessageParts[0]+ " - <Id> not equal to $Id </p>"}    
+    #Checking number of underscores in variables.
+    if($MessageParts.Length -gt 3 -or $MessageParts.Length -lt 2){$reportHTML += "<p style='color:red'>DGS recommend maximum of 2 '_'s and minimum one '_'. </br>No other checks executed.</p>";$Counter++;Continue}
 
-    $MessagePartsCounter = 1
-    [String[]]$SplittedMessage = @()
-    while($MessagePartsCounter -lt $MessageParts.Length)
-        {
-        [String[]]$SplittedMessage = Get-SplittedArray($MessageParts[$MessagePartsCounter])
-        
-        $MessageCounter = 0
-        if(($MessagePartsCounter -eq 1) -and ($MessageParts[$MessageParts.Length -1] -cne 'I')){
-            $reportHTML += Get-Comparepp($SplittedMessage[0])
-            $MessageCounter = 1}
+    #Checking <Id> matching FC name
+    $reportHTML += Get-IdCompareResult $MessageParts[0] $Id
+   
+    #Splitting the second part of message
+    [String[]]$SplittedMessage = Get-SplittedArray($MessageParts[1])
+   
+    #Checking <pp>    
+    $reportHTML += Get-Comparepp($SplittedMessage[0])
 
-        while($MessageCounter -lt $SplittedMessage.Length){
+    #Checking descriptive name
+    $MessageCounter = 1
+    while($MessageCounter -lt $SplittedMessage.Length){
             $reportHTML +=  Get-CompareDescriptiveName($SplittedMessage[$MessageCounter])
             $MessageCounter++}
 
-        $MessagePartsCounter++
-        }
-      
+    #Checking last part of message if it is present
+    if($MessageParts.Length -gt 2){
+       if(($MessageParts[2] -ceq 'MP') -or ($MessageParts[2] -ceq 'f') -or ($MessageParts[2] -ceq 'msg') -or ($MessageParts[2] -ceq 'f_msg')){}else{$reportHTML += "<p style='color:red'>Allowed 'ExVar's are  MP | f | msg | f_msg </p>"}
+    }
+
+
+    #Continuos Capital letter check
+    [String[]]$SplittedMessage = Get-ContinuousCapitalArray($MessageParts[1])
+        
+    if($SplittedMessage.Length -gt 0){$reportHTML +="<p><u>Continuous capital letter check</u></p>"}
+    #Checking descriptive name
+    $MessageCounter = 0
+    while($MessageCounter -lt $SplittedMessage.Length){
+          $reportHTML += Get-CompareCapitalName($SplittedMessage[$MessageCounter])
+          $MessageCounter++
+            }
+                
 $Counter++
 $reportHTML += '</td>'}
 
@@ -373,60 +287,61 @@ $reportHTML += '</table></br></br><table><tr><th>Calibrations</th><th>Findings</
 $Counter = 0
 while ($Counter -lt $Calibrations.Length) {
     
-    $MessageParts =@()
-    $MessageParts = $Calibrations[$Counter].Split('_')
+    [String[]]$CalibrationParts = $Calibrations[$Counter].Split('_')
     
+    #First column
     $reportHTML += '<tr><td>'+ $Calibrations[$Counter] +'</td><td>' 
+
+    #Checking number of underscores in variables.
+    if($CalibrationParts.Length -ne 3){$reportHTML += "<p style='color:red'>Should have exact 2 '_'s in the name. </br>No other checks executed</p>";$Counter++;Continue}
        
-    #Checking <Id> Matching FC Name
-    if($MessageParts[0] -ceq $Id){$reportHTML += "<p style='color:green'>"+ $MessageParts[0] +"</p>" }else{$reportHTML += "<p style='color:red'>"+ $MessageParts[0]+ " - <Id> not equal to $Id </p>"}   
+    #Checking <Id> matching FC name
+    $reportHTML += Get-IdCompareResult $CalibrationParts[0] $Id
 
-    #Checking the ending of calibrations
-    $SizeofSplittedArray = $MessageParts.Length - 1
-    if(($MessageParts[$MessageParts.Length - 1] -ceq 'C') -or ($MessageParts[$MessageParts.Length - 1] -ceq 'T') -or ($MessageParts[$MessageParts.Length - 1] -ceq 'M')){} else {$reportHTML += "<p style='color:red'>Calibration has to end with C, T or M</p>";$SizeofSplittedArray = $MessageParts.Length}
-
-    $MessagePartsCounter = 1
-    [String[]]$SplittedMessage = @()
-    while($MessagePartsCounter -lt ($SizeofSplittedArray))
-        {
-        
-        [String[]]$SplittedMessage = Get-SplittedArray($MessageParts[$MessagePartsCounter])
-        
-        $MessageCounter = 0
-        if($MessagePartsCounter -eq 1) {$reportHTML += Get-Comparepp($SplittedMessage[0]);$MessageCounter = 1}
-         
-        while($MessageCounter -lt $SplittedMessage.Length){
-            $reportHTML +=  Get-CompareDescriptiveName($SplittedMessage[$MessageCounter])
-            $MessageCounter++
+    #Splitting descriptive name
+    [String[]]$SplittedCalibrations = Get-SplittedArray($CalibrationParts[1])
+    
+    #Checking <pp>  
+    $reportHTML += Get-Comparepp($SplittedCalibrations[0])
+    
+    #Checking descriptive name
+    $CalibPartsCounter = 1
+    while($CalibPartsCounter -lt $SplittedCalibrations.Length){
+            $reportHTML +=  Get-CompareDescriptiveName($SplittedCalibrations[$CalibPartsCounter])
+            $CalibPartsCounter++
             }
 
-        $MessagePartsCounter++
-        }
-      
-$Counter++
+    #Checking the ending of calibrations
+    if(($CalibrationParts[2] -ceq 'C') -or ($CalibrationParts[2] -ceq 'T') -or ($CalibrationParts[2] -ceq 'M')){} else {$reportHTML += "<p style='color:red'>Calibration has to end with C, T or M</p>"}
+
+    #Continuos Capital letter check
+    [String[]]$SplittedCalibrations = Get-ContinuousCapitalArray($CalibrationParts[1])
+        
+    if($SplittedCalibrations.Length -gt 0){$reportHTML +="<p><u>Continuous capital letter check</u></p>"}
+
+    #Checking Capital name
+    $CalibPartsCounter = 0
+    while($CalibPartsCounter -lt $SplittedCalibrations.Length){
+          $reportHTML += Get-CompareCapitalName($SplittedCalibrations[$CalibPartsCounter])
+          $CalibPartsCounter++
+            }
+    
+    $Counter++
+    $reportHTML += '</td>'
 }
 
 
 
 $reportHTML += ' </tr></table></body></html>'
 
+#Final writing of test report
+
 if (Test-Path $Script:htmlPath -PathType leaf){
 remove-item $Script:htmlPath
 }
-New-Item $Script:htmlPath
+if(New-Item $Script:htmlPath){}
 Set-content -Path $Script:htmlPath  -Value $reportHTML
 
 Invoke-item $Script:htmlPath
 
-$RunButton.IsEnabled = $True
-$RunButton.Content ="Run"
 
-}
-
-$RunButton.Add_Click($RunClick)
-
-
-
- 
-
-[Void] $Window.ShowDialog()
