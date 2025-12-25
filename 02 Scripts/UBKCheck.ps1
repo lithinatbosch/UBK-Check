@@ -8,11 +8,12 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.5.6"
+"                        Version : 1.6.0"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.5.6"
+$current_version = "1.6.0"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
+$DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
 $IniFilePath = "\\bosch.com\dfsrb\DfsIN\LOC\Kor\BE-ES\EEI_EC\05_Global\02_External\Tools\UBKCheck\ubkcheck_current_ver.ini"
 
@@ -34,9 +35,9 @@ else
         if($Current_version -ne $Latest_version)
             {
             Echo "    A new update found, Downloading the update..."
-            Copy-item $Location
-            Echo "    Please use the latest tool Version : UBKCheck - $Latest_version ... (downloaded in the same folder)"
-            Read-Host "    Press any key to exit..."
+            Copy-item $Location -destination $DownloadToolPath
+            Echo "    Please use the latest tool version : UBKCheck - $Latest_version ... (At Desktop)"
+            Read-Host "    Press any key to exit this version..."
             Exit
             }
         else
@@ -47,7 +48,7 @@ else
     else
         {
         #READ FAILED
-        Write-Host "    Update check failed, you are allowed to use current version for now..." -ForegroundColor red
+        Write-Host "    Update check failed, but you are allowed to use current version for now..." -ForegroundColor red
         }    
     echo "    Downloading latest UBK database..."
     $ProgressPreference = 'SilentlyContinue'
@@ -59,8 +60,9 @@ $Ready = $True
 
 While($Ready)
 {
+echo " "
 
-$PavastFilePath  = Read-Host "    Pavast file path"
+$PavastFilePath  = Read-Host "    Pavast file path (or drag your pavast file to this window)"
 
 if($PavastFilePath -ne "")
 {
@@ -303,7 +305,7 @@ $Counter = 0
 
 $reportHTML = "<!DOCTYPE html>
 <html>
-<head>
+<head><meta charset='UTF-8'>
 <style>
 table {
   font-family: 'Trebuchet MS', Arial, Helvetica, sans-serif;
@@ -338,7 +340,6 @@ font-size:300%;
 
 div.warning {
 background-color: #fff;
-margin:auto;
 width:800px;
 margin-top: 40vh;
 padding: 0px 0px 20px 0px;
@@ -371,20 +372,20 @@ border-color: #4cae4c;
 <title>UBKCheck report</title>
 
 </head>
-<body style='background-color: #ececec;'>
+<body style='background-color: #ececec;' onload='ShowIUnderstandCheck()'>
 
 <center>
 <div id='Div1' class='warning'>
 <div class='warninghead' >Please note !</div>
 <ul style='color:#5e5e5e;text-align: left;padding:12px 12px 12px 30px;'>
-  <li>The created report can only be used as an additional reference for your implementation. A manual check of the variables are still advised.</li>
-  <li>The tool does not seperate newly added variables and existing variables, If you are updating the name of existing variables extra care must be taken to check to see if it impacts anywhere else.</li>
+  <li style='padding-bottom:6px'>The created report can only be used as an additional reference for your implementation. A manual check of the variables are still advised.</li>
+  <li style='padding-bottom:6px'>The tool does not seperate newly added variables and existing variables, If you are updating the name of existing variables extra care must be taken to check to see if it impacts anywhere else.</li>
   <li>Class instance names and instance specific variables are not checked in the current tool.</li>
 </ul> 
 <button onclick='MakeVisible()' class ='understand'>I Understand</button></div></center>
 
 
-<div style='visibility: hidden;  opacity: 0;  transition: visibility 1s, opacity 1s linear;' id='Div2'>
+<div style='display: none;' id='Div2'>
 <table><tr><th>Instructions</th></tr><tr style='text-align:center'><td>Only local static variables, exported messages and calibrations are checked. </br>Colors used and their meanings
 <p style='color:Green'>All Ok</p>
 <p style='color:Blue'>Suggestion</p>
@@ -510,13 +511,45 @@ while ($Counter -lt $Calibrations.Length) {
 }
 
 $reportHTML += ' </tr></table></div><script>
+function ShowIUnderstandCheck() {
+    if (typeof(Storage) !== "undefined") {
+        var Lastaccepteddate = new Date();
+        var currentDate = new Date()
+        Lastaccepteddate = GetLocalStorage();
+        if (Lastaccepteddate == null) {
+            SetLocalStorage();
+        } else {
+            const diffTime = Math.abs(Lastaccepteddate - currentDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > 7) {
+                SetLocalStorage();
+            } else {
+                MakeVisible();
+            }
+        }
+    }
+}
+
+
+function SetLocalStorage() {
+    var current = new Date();
+    localStorage.setItem("LastAcceptedDate", current);
+
+}
+
 function MakeVisible() {
     var x = document.getElementById("Div1");
     var y = document.getElementById("Div2");
-    y.style.visibility ="visible"
-    y.style.opacity = 1
-    x.style.display = "block";
+    y.style.display = "block"
     x.style.display = "none";
+}
+
+function GetLocalStorage() {
+    if (localStorage.getItem("LastAcceptedDate") != null) {
+        return Date.parse(localStorage.getItem("LastAcceptedDate"));
+    } else {
+        return null
+    }
 }
 </script></body></html>'
 
@@ -525,7 +558,7 @@ function MakeVisible() {
 $uri = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=UBKCheck&userId="+$env:UserName+"&componentName="+$FCName+"&result=done"
         $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
         [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
-       if( Invoke-WebRequest $uri -Method GET){}
+        if(Invoke-WebRequest $uri -Method GET){}
 #### Tracking Ends here #####
 
 
