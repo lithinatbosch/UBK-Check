@@ -8,17 +8,19 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.8.1"
+"                        Version : 1.8.2"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.8.1"
+$current_version = "1.8.2"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
-$script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
+$script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keywords.csv"
+$script:UBKDownloadFolder = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\"
 $IniFilePath = "\\bosch.com\dfsrb\DfsIN\LOC\Kor\BE-ES\EEI_EC\05_Global\02_External\Tools\UBKCheck\ubkcheck_current_ver.ini"
+$script:DailyCheckIni = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\daily_check.ini"
 
 #Daily update check and UBK database downloader
-if((Test-Path $script:UBKDownlaodPath) -and (((Get-Item $script:UBKDownlaodPath).LastWriteTime).Date -eq (Get-Date).Date)){
+if((Test-Path $script:DailyCheckIni) -and (((Get-Item $script:DailyCheckIni).LastWriteTime).Date -eq (Get-Date).Date)){
     echo "    Latest UBK database present..."
     }
 else{
@@ -38,17 +40,16 @@ else{
             Read-Host "    Press any key to exit this version..."
             Exit}
         else{
-            Echo "    No new update..."}
+            Write-Host "    No new update..." -ForegroundColor green}
         }
     else{
         #READ FAILED
         Write-Host "    Update check failed, but you are allowed to use current version for now..." -ForegroundColor red
-        }    
-    echo "    Downloading latest UBK database..."
-    $ProgressPreference = 'SilentlyContinue'
-    Invoke-WebRequest "http://rb-ubkklpro.de.bosch.com:38121/apex/f?p=2100:205:0::NO:::" -outfile $script:UBKDownlaodPath -ErrorAction Stop
-    Write-Host "    Download complete..." -ForegroundColor green
-}
+        } 
+       echo "    Downloading latest UBK database..."
+       copy-item \\SGPVMC0521.apac.bosch.com\CloudSearch\DB\ubk_keywords.csv -destination $script:UBKDownloadFolder  
+       Set-content -Path $script:DailyCheckIni -Value (Get-Date).Date
+    }
 
 
 
@@ -476,7 +477,7 @@ border-color: #4cae4c;
 <div class='warninghead' >Please note !</div>
 <ul style='color:#5e5e5e;text-align: left;padding:12px 12px 12px 30px;'>
   <li style='padding-bottom:6px'>The created report can only be used as an additional reference for your implementation. A manual check of the variables are still advised.</li>
-  <li style='padding-bottom:6px'>The tool does not seperate newly added variables and existing variables, If you are updating the name of existing variables extra care must be taken to check to see if it impacts anywhere else.</li>
+  <li style='padding-bottom:6px'>If you are updating the name of existing variables(to fix the identified warning) extra care must be taken to check to see if it impacts anywhere else.</li>
   <li>Class instance names and instance specific variables are not checked in the current tool.</li>
 </ul> 
 <button onclick='MakeVisible()' class ='understand'>I Understand</button></div></center>
