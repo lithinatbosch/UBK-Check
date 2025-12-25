@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.10.0"
+"                        Version : 1.10.1"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.10.0"
+$current_version = "1.10.1"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -23,12 +23,12 @@ $LastUpdateDate = "LastUpdateDate"
 # Check if the registry path exists, if not create it and set last update date to yesterday
 if (-not(Test-Path $registryPath)) {
     New-Item -Path $registryPath -Force | Out-Null  # Create the registry path if it doesn't exist
-    Set-ItemProperty -Path $registryPath -Name $LastUpdateDate -Value (Get-Date).AddDays(-1).Date
+    Set-ItemProperty -Path $registryPath -Name $LastUpdateDate -Value (Get-Date).AddDays(-1).ToString("yyyyMMdd")
 }
 # Retrieve registry properties, with error handling in case of failures
 $property = Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue
 
-if (-not $property -or [datetime]$property.$LastUpdateDate -ne (Get-Date).Date) {
+if (-not $property -or $property.$LastUpdateDate -ne (Get-Date).ToString("yyyyMMdd")) {
     Write-Output "    Daily update check running..."
     $UpdateCheckStatus = $True
     #READING UPDATE CHECK FILE
@@ -54,7 +54,7 @@ if (-not $property -or [datetime]$property.$LastUpdateDate -ne (Get-Date).Date) 
         Write-Host "    Update check failed, but you are allowed to use current version for now..." -ForegroundColor red
     } 
     # Update the last update date in the registry
-    Set-ItemProperty -Path $registryPath -Name $LastUpdateDate -Value (Get-Date).Date
+    Set-ItemProperty -Path $registryPath -Name $LastUpdateDate -Value (Get-Date).ToString("yyyyMMdd")
 }
 
 Write-Output "    Downloading latest UBK database..."
