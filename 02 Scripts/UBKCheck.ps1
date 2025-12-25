@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.11.0"
+"                        Version : 1.12.0"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.11.0"
+$current_version = "1.12.0"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -193,15 +193,40 @@ function Get-Comparepp {
 #Splitting the string to Abbrevations
 function Get-SplittedArray {
     param ([string]$Unsplitted)
-    [char[]]$newtext = @()
-    foreach ($character in $Unsplitted.ToCharArray()) {
-        if ([Char]::IsUpper($character) -or [Char]::ISNumber($character)) { $newtext += '*' }
-        $newtext += $character
+
+
+    # Return empty array if input is null or whitespace
+    if ([string]::IsNullOrWhiteSpace($Unsplitted)) {
+        return @()
     }
-    $Result = -Join $newtext
-    $Result = $Result.TrimStart('*')
-    return $Result.Split('*')
-}
+      # Initialize an empty string to build the modified text
+      $newText = ""
+
+      # Track if the previous character was an uppercase letter
+      $seenCapitalBefore  = $false
+  
+      # Loop through each character of the input string
+      foreach ($character in $Unsplitted.ToCharArray()) {
+          # Insert a separator (*) if:
+          # - Current character is uppercase
+          # - OR previous character was uppercase and current character is a number
+          if ([Char]::IsUpper($character) -or ($seenCapitalBefore  -and [Char]::IsNumber($character))) {
+              $newText += '*'
+          }
+  
+          # Add the current character to the array
+          $newText += $character
+  
+          # Once a capital letter is seen, set the flag permanently
+          if( [Char]::IsUpper($character)){$seenCapitalBefore  = $true}
+      }
+      
+      # Remove any leading separator
+      $newText = $newText.TrimStart('*')
+
+      # Split the string by separator and return the array
+      return $newText.Split('*')
+  }
 
 function Get-ContinuousCapitalArray {
     param ([string]$Unsplitted)
@@ -255,17 +280,16 @@ function Get-LengthCheckResult {
     param ([string]$CIdentifier)
     
     $Sections = $CIdentifier.Split('_')
-    $Result = ""
-
+    $Result = "<table align='left'><tr><td colspan='3' style='color:#486350;font-weight:bold;text-align: center;'>Length Check</td></tr>"
+    $Result += "<tr style='color:#486350;'><td>Section</td><td>Length</td><td>Status</td></tr>"   
     foreach ($Section in $Sections){
         $Length = $Section.Length
         $Color = if ($Length -gt 20) { "red" } else { "green" }
-        $Status = if ($Length -gt 20) { "Failed (&gt;20)" } else { "Pass (&lt;=20)" }
-        
+        $Status = if ($Length -gt 20) { "Failed" } else { "Passed" }
         # Use string interpolation for readability
-        $Result += "<p style='color:$Color;font-weight:bold;'>Length of '$Section' : $Length $Status</p>"
+        $Result += "<tr><td style='color:$Color;'>$Section</td><td style='color:$Color;'>$Length</td><td style='color:$Color;'>$Status</td></tr>"
     }
-    
+    $Result += "</table>"
     return $Result
 }
 
@@ -575,9 +599,10 @@ border-color: #4cae4c;
 <p class='fcname'>$FCName</p>"
 
 $ExVarMessageArray = @("MP","f","msg","f_msg", "Sq")
-$ExVarVariableArray = @('c','p','a','en','un','st','pfn','cb8','pb8','ab8','cb16','pb16','ab16','cb32','pb32','ab32','cu8',
-                        'pu8','au8','cu16','pu16','au16','cu32','pu32','au32','cu64','pu64','au64','cui','pui','aui','cs8','ps8','as8',
-                        'cs16','ps16','as16','cs32','ps32','as32','cs64','ps64','as64','csi','psi','asi','cr32','pr32','ar32')
+# $ExVarVariableArray = @('c','p','a','en','un','st','pfn','cb8','pb8','ab8','cb16','pb16','ab16','cb32','pb32','ab32','cu8',
+#                         'pu8','au8','cu16','pu16','au16','cu32','pu32','au32','cu64','pu64','au64','cui','pui','aui','cs8','ps8','as8',
+#                         'cs16','ps16','as16','cs32','ps32','as32','cs64','ps64','as64','csi','psi','asi','cr32','pr32','ar32')
+$ExVarVariableArray = @("MP","f","msg","f_msg")
 $ExVarCalibArray = @('C','CA','T','FT','GT','M','FM','GM','AX','ASC')
 
 
@@ -585,7 +610,7 @@ Write-Output "    Analyzing messages..."
 $reportHTML += Get-AnalysisTable -VariableArray $Messages -VariableType "Messages" -IdIn $Id -ExVarArray $ExVarMessageArray -ExVarType "ExVar" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseMessages
 $reportHTML += '<br><br>'
 Write-Output "    Analyzing variables..."
-$reportHTML += Get-AnalysisTable -VariableArray $Variables -VariableType "Variables" -IdIn $Id -ExVarArray $ExVarVariableArray -ExVarType "ExVarLoc" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseVariables
+$reportHTML += Get-AnalysisTable -VariableArray $Variables -VariableType "Variables" -IdIn $Id -ExVarArray $ExVarVariableArray -ExVarType "ExVar" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseVariables
 $reportHTML += '<br><br>'
 Write-Output "    Analyzing calibrations..."
 $reportHTML += Get-AnalysisTable -VariableArray $Calibrations -VariableType "Calibrations" -IdIn $Id -ExVarArray $ExVarCalibArray -ExVarType "ExCal" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseCalibrations
