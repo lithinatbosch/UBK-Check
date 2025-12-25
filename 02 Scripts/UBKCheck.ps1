@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.6.1"
+"                        Version : 1.7.0"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.6.1"
+$current_version = "1.7.0"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
@@ -20,33 +20,27 @@ $IniFilePath = "\\bosch.com\dfsrb\DfsIN\LOC\Kor\BE-ES\EEI_EC\05_Global\02_Extern
 #Daily update check and UBK database downloader
 if((Test-Path $script:UBKDownlaodPath) -and (((Get-Item $script:UBKDownlaodPath).LastWriteTime).Date -eq (Get-Date).Date)){
     echo "    Latest UBK database present..."
-}
-else
-{
+    }
+else{
     Echo "    Daily update check running..."
     $UpdateCheckStatus = $True
-    #READING UPDATE FILE
+    #READING UPDATE CHECK FILE
     try{$FileContent = get-content $IniFilePath -ErrorAction Stop} catch {$UpdateCheckStatus = $False}
     
     #READ SUCCESS
     if($UpdateCheckStatus){
         $Latest_version = $FileContent[0]
         $Location = $FileContent[1]
-        if($Current_version -ne $Latest_version)
-            {
+        if($Current_version -ne $Latest_version){
             Echo "    A new update found, Downloading the update..."
             Copy-item $Location -destination $DownloadToolPath
             Echo "    Please use the latest tool version : UBKCheck - $Latest_version ... (At Desktop)"
             Read-Host "    Press any key to exit this version..."
-            Exit
-            }
-        else
-            {
-            Echo "    No new update..."
-            }
+            Exit}
+        else{
+            Echo "    No new update..."}
         }
-    else
-        {
+    else{
         #READ FAILED
         Write-Host "    Update check failed, but you are allowed to use current version for now..." -ForegroundColor red
         }    
@@ -56,28 +50,23 @@ else
     Write-Host "    Download complete..." -ForegroundColor green
 }
 
+
+
+#Getting pavast Inputs
 $Ready = $True
+While($Ready){
+    echo " "
+    $PavastFilePath  = Read-Host "    Pavast file path (or drag your pavast file to this window)"
+    $PavastFilePath = $PavastFilePath.Trim('"') #Why? To support drag and drop files with spaces in the path
 
-While($Ready)
-{
-echo " "
-
-$PavastFilePath  = Read-Host "    Pavast file path (or drag your pavast file to this window)"
-$PavastFilePath = $PavastFilePath.Trim('"') #Why? To support drag and drop files with spaces in the path
-
-if($PavastFilePath -ne "")
-{
-if(Test-Path $PavastFilePath -PathType leaf){
-
-if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"    Please enter a valid pavast file path"}
-
-}
-else{"    Please enter a valid pavast file path"}
-}
-
-}
-
-
+    if($PavastFilePath -ne ""){
+        if(Test-Path $PavastFilePath -PathType leaf){
+            if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}
+            Else{Echo "    Please enter a valid pavast file path"}
+        }
+        else{Echo "    Please enter a valid pavast file path"}
+        }
+    }
 
 function Get-CompareDescriptiveName {
     param ( [string]$DescriptiveName )
@@ -112,7 +101,7 @@ function Get-CompareDescriptiveName {
 
 function Get-IdCompareResult {
     param ([string]$MessagePartIn, [string]$idIn )
-     if($MessagePartIn -ceq $idIn) {$Result= "<p style='color:green'>"+ $MessagePartIn +"</p>" } else {$Result = "<p style='color:red'>"+ $MessagePartIn + " - <Id> not equal to $idIn (Id)</p>"}
+     if($MessagePartIn -ceq $idIn) {$Result = "<p style='color:green' >"+ $MessagePartIn +"</p>" } else {$Result ="<p style='color:red'>"+ $MessagePartIn + " - <Id> not equal to $idIn (Id)</p>"}
      Return $Result
     }
 
@@ -120,16 +109,31 @@ function Get-IdCompareResult {
 #Checking the validity of pp
 function Get-Comparepp {
     param ([string[]]$pp)
-         
-    $Result ="<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
-    $script:UBKArray | ForEach-Object {
-        if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name")){ $Result = "<p style='color:green'>$pp - "+$_."Long Name En"+"</p>"}
-        }
-
-   if($pp -eq 'r'){$Result = "<p style='color:Orange'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
-   if($pp -eq 'mask'){$Result = "<p style='color:Orange'> $pp -  only valid for signal qualifier(Sq) mask calibrations</p>"}
-   return $Result
-    }
+    $Found = $False     
+    if($pp -eq 'r')
+                {$Result = "<p style='color:Orange'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
+    elseif($pp -eq 'mask')
+                {$Result = "<p style='color:Orange'> $pp -  only valid for signal qualifier(Sq) mask calibrations</p>"}
+    else 
+                {
+                $script:UBKArray | ForEach-Object {
+                    if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name"))
+                        {
+                        $Found = $True
+                        $LongName = $_."Long Name En"
+                        }
+                        }
+                     if($Found)
+                            {
+                            $Result = "<p style='color:green'>$pp - "+$LongName+"</p>"
+                            }
+                        else
+                            {
+                            $Result ="<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
+                            }
+                 }
+    return $Result
+ }
 
 #Splitting the string to Abbrevations
 function Get-SplittedArray {
@@ -187,11 +191,11 @@ function Get-CompareCapitalName{
             $script:UBKArray | ForEach-Object {
 
                 if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveNameModified)){ 
-                $Result = "<p style='color:Blue'>$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified"+"</p>"}}
+                $Result = "<p style='color:Blue' >$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified"+"</p>"}}
                 }
 
 
-    if($Result -eq ""){"<p style='color:red'>$DescriptiveName - not present in UBK abbrevations</p>"}
+    if($Result -eq ""){$Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations</p>"}
     return $Result
     }
 
@@ -202,7 +206,7 @@ function Get-CompareCapitalName{
     $Result =""
      if($CIdentifier.Length -gt 60)
         {
-        $Result = "<p style='color:red;font-weight: bold;'>Length check result : Failed (Length : "+$CIdentifier.Length+")</p>"
+        $Result = "<p style='color:red;font-weight: bold;' >Length check result : Failed (Length : "+$CIdentifier.Length+")</p>"
         }
      else
         {
@@ -210,6 +214,9 @@ function Get-CompareCapitalName{
         }
      return $Result
    }
+
+
+
 
 
 echo "    Reading pavast..."
@@ -387,18 +394,19 @@ border-color: #4cae4c;
 
 
 <div style='display: none;' id='Div2'>
-<table><tr><th>Instructions</th></tr><tr style='text-align:center'><td>Only local static variables, exported messages and calibrations are checked. </br>Colors used and their meanings
-<p style='color:Green'>All Ok</p>
-<p style='color:Blue'>Suggestion</p>
-<p style='color:Red'>Error</p>
-<p style='color:Orange'>User confirmation needed</p>
-</td></tr></table>
+<table class='legend'><tbody style='text-align:center'>
+<tr ><th colspan='3' style='text-align:center'>Legend and statistics</th></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckOk' checked='true'checked='true'/></td><td><p style='color:Green'>All Ok</p></td><td id='OkCount'>16</td></tr>
+<tr><td  style='width:10%'> <input type='checkbox'  onchange='ApplyFilter()' id='CheckSuggest' checked='true'/></td><td><p style='color:Blue'>Suggestion</p></td><td id='SuggestionCount'>0</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckError' checked='true'/> </td><td><p style='color:Red'>Error</p></td><td id='ErrorCount'>37</td></tr>
+<tr><td  style='width:10%'> <input type='checkbox'  onchange='ApplyFilter()' id='CheckWarning' checked='true'/></td><td><p style='color:Orange'>User confirmation needed</p></td><td id='WarningCount'>27</td></tr>
+</tbody></table>
 
 
 
 <p class='fcname'>$FCName</p>
 
-<table><tr><th>Variables</th><th>Findings</th></tr>"
+<table id='variables'><tr><th>Variables</th><th>Findings</th></tr>"
 
 while ($Counter -lt $Messages.Length) {
 
@@ -413,7 +421,7 @@ while ($Counter -lt $Messages.Length) {
     $reportHTML += '<tr><td>'+ $Messages[$Counter] +'</td><td>'
        
     #Checking number of underscores in variables.
-    if($MessageParts.Length -gt 3 -or $MessageParts.Length -lt 2){$reportHTML += "<p style='color:red'>DGS recommend maximum of 2 '_'s and minimum one '_'. </br>No other checks executed.</p>";$Counter++;Continue}
+    if($MessageParts.Length -gt 3 -or $MessageParts.Length -lt 2){ $reportHTML += "<p style='color:red' >DGS recommend maximum of 2 '_'s and minimum one '_'. </br>No other checks executed.</p>";$Counter++;Continue}
 
     #Checking <Id> matching FC name
     $reportHTML += Get-IdCompareResult $MessageParts[0] $Id
@@ -432,7 +440,7 @@ while ($Counter -lt $Messages.Length) {
 
     #Checking last part of message if it is present
     if($MessageParts.Length -gt 2){
-       if(($MessageParts[2] -ceq 'MP') -or ($MessageParts[2] -ceq 'f') -or ($MessageParts[2] -ceq 'Sq') -or ($MessageParts[2] -ceq 'msg') -or ($MessageParts[2] -ceq 'f_msg')){}else{$reportHTML += "<p style='color:red'>Allowed 'ExVar's are  MP | f | msg | f_msg | Sq </p>"}
+       if(($MessageParts[2] -ceq 'MP') -or ($MessageParts[2] -ceq 'f') -or ($MessageParts[2] -ceq 'Sq') -or ($MessageParts[2] -ceq 'msg') -or ($MessageParts[2] -ceq 'f_msg')){}else{$reportHTML += "<p style='color:red' >Allowed 'ExVar's are  MP | f | msg | f_msg | Sq </p>"}
     }
 
 
@@ -452,7 +460,7 @@ $Counter++
 $reportHTML += '</td>'}
 
 
-$reportHTML += '</table></br></br><table><tr><th>Calibrations</th><th>Findings</th></tr>'
+$reportHTML += '</table></br></br><table id="calibrations"><tr><th>Calibrations</th><th>Findings</th></tr>'
 
 echo "    Analyzing calibrations..."
 
@@ -511,32 +519,27 @@ while ($Counter -lt $Calibrations.Length) {
     $reportHTML += '</td>'
 }
 
+
 $reportHTML += ' </tr></table></div><script>
 function ShowIUnderstandCheck() {
     if (typeof(Storage) !== "undefined") {
         var Lastaccepteddate = new Date();
         var currentDate = new Date()
         Lastaccepteddate = GetLocalStorage();
-        if (Lastaccepteddate == null) {
-            SetLocalStorage();
-        } else {
+        if (Lastaccepteddate == null){SetLocalStorage();} 
+        else {
             const diffTime = Math.abs(Lastaccepteddate - currentDate);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays > 7) {
-                SetLocalStorage();
-            } else {
-                MakeVisible();
-            }
+            if (diffDays > 7){SetLocalStorage();} else {MakeVisible();}
         }
     }
+    Counter();
 }
-
 
 function SetLocalStorage() {
     var current = new Date();
-    localStorage.setItem("LastAcceptedDate", current);
+    localStorage.setItem("LastAcceptedDate", current);}
 
-}
 
 function MakeVisible() {
     var x = document.getElementById("Div1");
@@ -548,10 +551,86 @@ function MakeVisible() {
 function GetLocalStorage() {
     if (localStorage.getItem("LastAcceptedDate") != null) {
         return Date.parse(localStorage.getItem("LastAcceptedDate"));
-    } else {
-        return null
+    } else {return null}
     }
+
+function ApplyFilter() {
+	var showok = document.getElementById("CheckOk").checked;
+	var showSuggest = document.getElementById("CheckSuggest").checked;
+	var showErr = document.getElementById("CheckError").checked;
+	var showConfirm = document.getElementById("CheckWarning").checked;
+	
+	FilterTable(document.getElementById("variables"), showok, showSuggest, showErr, showConfirm);
+	FilterTable(document.getElementById("calibrations"), showok, showSuggest, showErr, showConfirm);
 }
+
+function FilterTable(table, showok, showSuggest, showErr, showConfirm) {
+	var tr = table.getElementsByTagName("tr");
+	for (r = 1; r < tr.length; r++) {
+		var allok=true;
+		var sugg=false;
+		var errprs=false;
+		var conf=false;
+		
+		var td = tr[r].getElementsByTagName("td");
+		if (td.length>0) {
+			var para = td[1].getElementsByTagName("p");
+			for (p=0;p<para.length; p++) {
+				if (para[p].style.color=="blue") {sugg=true;allok=false;}
+				if (para[p].style.color=="red") {errprs=true;allok=false;}
+				if (para[p].style.color=="orange") {conf=true;allok=false;}
+			}
+		} 
+		
+		if ((showok && allok) || (showSuggest && sugg) || (showErr && errprs) || (showConfirm && conf)) {
+			tr[r].style.display = "";
+		} else {
+			tr[r].style.display = "none";
+		}
+	}
+}
+function Counter()
+{
+var SuggestionCount = 0;
+var ErrorCount = 0;
+var WarningCount = 0;
+var AllOkCount = 0;
+var tableCalibrations;
+for(iCount = 0; iCount < 2;iCount++){
+if(iCount==0){tableVariables = document.getElementById("variables");}
+else{tableVariables = document.getElementById("calibrations");}
+
+var tr = tableVariables.getElementsByTagName("tr");
+	for (r = 1; r < tr.length; r++) {
+		var allok=true;
+		var sugg=false;
+		var errprs=false;
+		var conf=false;
+		var td = tr[r].getElementsByTagName("td");
+		if (td.length>0) {
+			var para = td[1].getElementsByTagName("p");
+			for (p=0;p<para.length; p++) {
+				if (para[p].style.color=="blue") {sugg=true;allok=false;}
+				if (para[p].style.color=="red") {errprs=true;allok=false;}
+				if (para[p].style.color=="orange") {conf=true;allok=false;}
+			}	
+		}
+		if(sugg){SuggestionCount++;}
+		if(errprs){ErrorCount++;}
+		if(conf){WarningCount++;}
+		if(allok){AllOkCount++;}
+}
+}	
+
+document.getElementById("OkCount").innerHTML = AllOkCount;
+document.getElementById("SuggestionCount").innerHTML = SuggestionCount;
+document.getElementById("ErrorCount").innerHTML = ErrorCount;
+document.getElementById("WarningCount").innerHTML = WarningCount;
+
+
+}
+
+
 </script></body></html>'
 
 
