@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.10.2"
+"                        Version : 1.10.3"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.10.2"
+$current_version = "1.10.3"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -209,8 +209,8 @@ function Get-ContinuousCapitalArray {
     $newtext = ""
     $ReturnArray = @()
     
-    # Add a dummy small letter at the end to detect final sequence
-    $Unsplitted += "x"
+    # Add a dummy capital followed by small letter at the end to detect final sequence and to avoid removing last capital letter
+    $Unsplitted += "Xx"
         
     foreach ($character in $Unsplitted.ToCharArray()) {
         if ([char]::IsUpper($character)) {
@@ -219,9 +219,9 @@ function Get-ContinuousCapitalArray {
         }
         else {
             # When encountering a non-uppercase character, check for a sequence
-            if ($newtext.Length -gt 2) {
-                # Add to return array only if the sequence is more than 2 characters
-                $ReturnArray += $newtext
+            if ($newtext.Length -gt 3) {
+                # Add to return array only if the sequence is more than 3 characters
+                $ReturnArray += $newtext.SubString(0,$newtext.Length -1)
             }
             # Reset temporary string after processing
             $newtext = ""
