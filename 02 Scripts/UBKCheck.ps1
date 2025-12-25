@@ -50,28 +50,29 @@ function Get-CompareDescriptiveName {
     param ( [string]$DescriptiveName )
     $Found = $False
     $script:UBKArray | ForEach-Object {
-        if ($_."Abbr Name" -ceq $DescriptiveName -and $_."Life Cycle State" -eq "Valid" -and ($_."Element" -eq "x" -or $_."ProperName" -eq "x")) {
+        if ($_."Abbr Name" -ceq $DescriptiveName -and $_."Life Cycle State" -eq "Valid" -and $_."Domain Name" -eq "AUTOSAR" -and  ($_."Element" -eq "x" -or $_."ProperName" -eq "x")) {
             $Found = $True
-            $NameDomain = $_."Domain Name"
             $LongName = $_."Long Name En"
             }
         }
 
-    if($Found){
-        if($NameDomain -eq "AUTOSAR") {
-            if($DescriptiveName.Length -eq 1){$Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>" }else{$Result = "<p style='color:green'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>"}
+    if($Found){ #Found an AUTOSAR name
+        if($DescriptiveName.Length -eq 1){$Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>" }else{$Result = "<p style='color:green'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>"}
+        }
+    else {
+        $script:UBKArray | ForEach-Object {
+        if ($_."Abbr Name" -ceq $DescriptiveName -and $_."Life Cycle State" -eq "Valid" -and $_."Domain Name" -eq "RB" -and  ($_."Element" -eq "x" -or $_."ProperName" -eq "x")) {
+            $Found = $True
+            $LongName = $_."Long Name En"
             }
-        elseif($NameDomain -eq "RB"){
-            $Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName +" (RB)</p>" 
-            }
+        }
+        if($Found) {
+            $Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName+" (RB)</p>"}
         else {
             $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
             }
-
         }
-    else {
-        $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
-        }
+        
     return $Result
     }
 
