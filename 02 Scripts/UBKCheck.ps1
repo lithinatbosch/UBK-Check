@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.10.3"
+"                        Version : 1.11.0"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.10.3"
+$current_version = "1.11.0"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -706,8 +706,18 @@ $uriFeatureTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/trackin
 $uriCountTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/save?toolId=ubkcheck&userId=" + $env:UserName
 $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
 [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
-if (Invoke-WebRequest $uriFeatureTracking -Method GET) {}
-if (Invoke-WebRequest $uriCountTracking -Method GET) {}
+try {
+    $resp = Invoke-WebRequest $uriFeatureTracking -Method GET -TimeoutSec 10 
+    }
+    catch {
+        Write-Output "    Tool tracking failed 01"
+    }
+    try {
+     $resp =Invoke-WebRequest $uriCountTracking -Method GET -TimeoutSec 10
+    }
+    catch {
+        Write-Output "    Tool tracking failed 02"
+    }
 #### Tracking Ends here #####
 
 
