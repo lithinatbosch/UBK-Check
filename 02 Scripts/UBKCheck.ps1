@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.10.1"
+"                        Version : 1.10.2"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.10.1"
+$current_version = "1.10.2"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -278,7 +278,8 @@ function Get-Messages {
         $variableRef = $ref.SelectSingleNode("SW-VARIABLE-REF").InnerText 
         $Messages += $variableRef 
     }
-    $Messages += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-INTERFACES/SW-FEATURE-INTERFACE/SW-INTERFACE-EXPORTS/SW-INTERFACE-EXPORT/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"
+    if ($null -ne $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-INTERFACES/SW-FEATURE-INTERFACE/SW-INTERFACE-EXPORTS/SW-INTERFACE-EXPORT/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF") {
+        $Messages += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-INTERFACES/SW-FEATURE-INTERFACE/SW-INTERFACE-EXPORTS/SW-INTERFACE-EXPORT/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"}
     
     Return $Messages
 }
@@ -299,14 +300,17 @@ function Get-Calibrations {
             $CalibRef = $ref.SelectSingleNode("SW-CALPRM-REF").InnerText 
             $Calibrations += $CalibRef 
         }
-        $Calibrations += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF"
+        if($null -ne $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF") {
+            $Calibrations += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF"}
     }
     else {
         foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS/SW-CALPRM-REF-SYSCOND")) {
             $CalibRef = $ref.SelectSingleNode("SW-CALPRM-REF").InnerText 
             $Calibrations += $CalibRef 
         }
-        $Calibrations += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF"
+        if($null -ne $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF") {
+             $Calibrations += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF"
+            }
 
     }
     Return $Calibrations
@@ -328,14 +332,16 @@ function Get-Variables {
             $CalibRef = $ref.SelectSingleNode("SW-VARIABLE-REF").InnerText 
             $Variables += $CalibRef 
         }
-        $Variables += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"
+        if($null -ne $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"){
+            $Variables += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"}
     }
     else {
         foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS/SW-VARIABLE-REF-SYSCOND")) {
             $CalibRef = $ref.SelectSingleNode("SW-VARIABLE-REF").InnerText 
             $Variables += $CalibRef 
         }
-        $Variables += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"
+        if($null -ne $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"){
+            $Variables += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"}
     }
     
     #Removing exported variables
