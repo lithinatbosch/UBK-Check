@@ -7,8 +7,9 @@
    | |   | || (  \ \ |  ( \ \   | |      | (   ) || (      | |      |  ( \ \ 
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
-   "A small tool to check naming conventions"
-   "Contact : lpd5kor"
+                 "Tool for naming convention check"
+                        "Version : 1.5.5"
+   "For help, suggestions and improvements please contact 'lpd5kor'"
 
 
 $Ready = $True
@@ -22,10 +23,10 @@ if($PavastFilePath -ne "")
 {
 if(Test-Path $PavastFilePath -PathType leaf){
 
-if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"Please enter a valid pavast path"}
+if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"Please enter a valid pavast  file path"}
 
 }
-else{"Please enter a valid pavast path"}
+else{"Please enter a valid pavast file path"}
 }
 
 }
@@ -35,7 +36,7 @@ $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Te
 
 #If not downloaded today download again
 if((Test-Path $script:UBKDownlaodPath) -and (((Get-Item $script:UBKDownlaodPath).LastWriteTime).Date -eq (Get-Date).Date)){
-    echo "Latest UBK database already present..."
+    echo "Latest UBK database present..."
 }
 else
 {
@@ -162,6 +163,22 @@ function Get-CompareCapitalName{
     return $Result
     }
 
+    
+    
+  function Get-LengthCheckResult{
+    param ( [string]$CIdentifier )
+    $Result =""
+     if($CIdentifier.Length -gt 60)
+        {
+        $Result = "<p style='color:red;font-weight: bold;'>Length check result : Failed (Length : "+$CIdentifier.Length+")</p>"
+        }
+     else
+        {
+        $Result = "<p style='color:green;font-weight: bold;'>Length check result : Ok (Length : "+$CIdentifier.Length+")</p>"
+        }
+     return $Result
+   }
+
 
 echo "Reading pavast..."
 $script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
@@ -262,7 +279,7 @@ $reportHTML = "<!DOCTYPE html>
 table {
   font-family: 'Trebuchet MS', Arial, Helvetica, sans-serif;
   border-collapse: collapse;
-  width: 50%;
+  width: 70%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -270,7 +287,7 @@ table {
 td, th {
   border: 1px solid #ddd;
   padding: 2px;
-  width: 25%;
+  width: 50%;
 }
 
 tr:nth-child(even){background-color: #f2f2f2;}
@@ -355,7 +372,8 @@ while ($Counter -lt $Messages.Length) {
           $reportHTML += Get-CompareCapitalName($SplittedMessage[$MessageCounter])
           $MessageCounter++
             }
-                
+              
+$reportHTML += Get-LengthCheckResult($Messages[$Counter])
 $Counter++
 $reportHTML += '</td>'}
 
@@ -414,7 +432,7 @@ while ($Counter -lt $Calibrations.Length) {
           $reportHTML += Get-CompareCapitalName($SplittedCalibrations[$CalibPartsCounter])
           $CalibPartsCounter++
             }
-    
+    $reportHTML += Get-LengthCheckResult($Calibrations[$Counter])
     $Counter++
     $reportHTML += '</td>'
 }
