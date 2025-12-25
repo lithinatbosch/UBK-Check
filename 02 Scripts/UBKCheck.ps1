@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.6.0"
+"                        Version : 1.6.1"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.6.0"
+$current_version = "1.6.1"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keyword_list.csv"
@@ -63,12 +63,13 @@ While($Ready)
 echo " "
 
 $PavastFilePath  = Read-Host "    Pavast file path (or drag your pavast file to this window)"
+$PavastFilePath = $PavastFilePath.Trim('"') #Why? To support drag and drop files with spaces in the path
 
 if($PavastFilePath -ne "")
 {
 if(Test-Path $PavastFilePath -PathType leaf){
 
-if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"Please enter a valid pavast  file path"}
+if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"    Please enter a valid pavast file path"}
 
 }
 else{"    Please enter a valid pavast file path"}
@@ -289,7 +290,7 @@ elseif($CodeGenerator -eq 'MATLAB')
 else
 {
    Echo "    Cannot read Pavast"
-   Break
+   Exit
 }
 
 echo "    Analyzing messages..."
@@ -555,7 +556,7 @@ function GetLocalStorage() {
 
 
 #### Automation Tracking #####
-$uri = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=UBKCheck&userId="+$env:UserName+"&componentName="+$FCName+"&result=done"
+$uri = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=ubkcheck&userId="+$env:UserName+"&componentName="+$FCName+"&result=done"
         $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
         [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
         if(Invoke-WebRequest $uri -Method GET){}
