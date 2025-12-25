@@ -526,7 +526,7 @@ while ($Counter -lt $Messages.Length) {
     }
     else
     {
-    $reportHTML += '<tr style="background-color:orange" ><td>'+ $Messages[$Counter] +'</td><td>'
+    $reportHTML += '<tr style="background-color:#aafa93" ><td>'+ $Messages[$Counter] +'</td><td>'
     }
 
        
@@ -598,7 +598,7 @@ while ($Counter -lt $Calibrations.Length) {
     }
     else
     {
-    $reportHTML += '<tr style="background-color:orange" ><td>'+ $Calibrations[$Counter] +'</td><td>' 
+    $reportHTML += '<tr style="background-color:#aafa93" ><td>'+ $Calibrations[$Counter] +'</td><td>' 
     }
 
     #Checking number of underscores in variables.
