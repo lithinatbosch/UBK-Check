@@ -1,4 +1,4 @@
-﻿
+
 "             ______   _          _______           _______  _______  _       
    |\     /|(  ___ \ | \    /\  (  ____ \|\     /|(  ____ \(  ____ \| \    /\
    | )   ( || (   ) )|  \  / /  | (    \/| )   ( || (    \/| (    \/|  \  / /
@@ -8,410 +8,448 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.8.7"
+"                        Version : 1.9.0"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.8.7"
-$Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
-$DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
-$script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keywords.csv"
-$script:UBKDownloadFolder = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\"
+$current_version = "1.9.0"
+$Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
+$DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
+$script:UBKDownlaodPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\ubk_keywords.csv"
+$script:UBKDownloadFolder = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
-$script:DailyCheckIni = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\daily_check.ini"
+$script:DailyCheckIni = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\daily_check.ini"
 
 #Daily update check and UBK database downloader
-if((Test-Path $script:DailyCheckIni) -and (((Get-Item $script:DailyCheckIni).LastWriteTime).Date -eq (Get-Date).Date)){
-    echo "    Latest UBK database present..."
-    }
-else{
-    Echo "    Daily update check running..."
+if ((Test-Path $script:DailyCheckIni) -and (((Get-Item $script:DailyCheckIni).LastWriteTime).Date -eq (Get-Date).Date)) {
+    Write-Output "    Latest UBK database present..."
+}
+else {
+    Write-Output "    Daily update check running..."
     $UpdateCheckStatus = $True
     #READING UPDATE CHECK FILE
-    try{$FileContent = get-content $IniFilePath -ErrorAction Stop} catch {$UpdateCheckStatus = $False}
+    try { $FileContent = get-content $IniFilePath -ErrorAction Stop } catch { $UpdateCheckStatus = $False }
     
     #READ SUCCESS
-    if($UpdateCheckStatus){
+    if ($UpdateCheckStatus) {
         $Latest_version = $FileContent[0]
         $Location = $FileContent[1]
-        if($Current_version -ne $Latest_version){
-            Echo "    A new update found, Downloading the update..."
+        if ($Current_version -ne $Latest_version) {
+            Write-Output "    A new update found, Downloading the update..."
             Copy-item $Location -destination $DownloadToolPath
-            Echo "    Please use the latest tool version : UBKCheck - $Latest_version ... (At Desktop)"
+            Write-Output "    Please use the latest tool version : UBKCheck - $Latest_version ... (At Desktop)"
             Read-Host "    Press any key to exit this version..."
-            Exit}
-        else{
-            Write-Host "    No new update..." -ForegroundColor green}
+            Exit
         }
-    else{
+        else {
+            Write-Host "    No new update..." -ForegroundColor green
+        }
+    }
+    else {
         #READ FAILED
         Write-Host "    Update check failed, but you are allowed to use current version for now..." -ForegroundColor red
-        } 
-       echo "    Downloading latest UBK database..."
-       copy-item \\SGPVMC0521.apac.bosch.com\CloudSearch\DB\ubk_keywords.csv -destination $script:UBKDownloadFolder  
-       Set-content -Path $script:DailyCheckIni -Value (Get-Date).Date
-    }
+    } 
+    Write-Output "    Downloading latest UBK database..."
+    copy-item \\SGPVMC0521.apac.bosch.com\CloudSearch\DB\ubk_keywords.csv -destination $script:UBKDownloadFolder  
+    Set-content -Path $script:DailyCheckIni -Value (Get-Date).Date
+}
 
 
 
 #Getting pavast Inputs
 $Ready = $True
-While($Ready){
-    echo " "
-    $PavastFilePath  = Read-Host "    Pavast file path (or drag your pavast file to this window)"
+While ($Ready) {
+    Write-Output " "
+    $PavastFilePath = Read-Host "    Pavast file path (or drag your pavast file to this window)"
     $PavastFilePath = $PavastFilePath.Trim('"') #Why? To support drag and drop files with spaces in the path
 
-    if($PavastFilePath -ne ""){
-        if(Test-Path $PavastFilePath -PathType leaf){
-            if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}
-            Else{Echo "    Please enter a valid pavast file path"}
+    if ($PavastFilePath -ne "") {
+        if (Test-Path $PavastFilePath -PathType leaf) {
+            if (($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")) { $Ready = $False }
+            Else { Write-Output "    Please enter a valid pavast file path" }
         }
-        else{Echo "    Please enter a valid pavast file path"}
-        }
+        else { Write-Output "    Please enter a valid pavast file path" }
     }
+}
 
 $Ready = $True
 $BaseCompareActive = $False
-While($Ready){
-    echo " "
-    $BasePavastFilePath  = Read-Host "    Base Pavast file path (optional, press enter to skip)"
+While ($Ready) {
+    Write-Output " "
+    $BasePavastFilePath = Read-Host "    Base Pavast file path (optional, press enter to skip)"
     $BasePavastFilePath = $BasePavastFilePath.Trim('"') #Why? To support drag and drop files with spaces in the path
 
-    if($BasePavastFilePath -ne ""){
-        if(Test-Path $BasePavastFilePath -PathType leaf){
-            if(($BasePavastFilePath.Substring($BasePavastFilePath.Length - 11) -eq "_pavast.xml") -or ($BasePavastFilePath.Substring($BasePavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False
-            $BaseCompareActive = $True}
-            Else{Echo "    Please enter a valid pavast file path"}
+    if ($BasePavastFilePath -ne "") {
+        if (Test-Path $BasePavastFilePath -PathType leaf) {
+            if (($BasePavastFilePath.Substring($BasePavastFilePath.Length - 11) -eq "_pavast.xml") -or ($BasePavastFilePath.Substring($BasePavastFilePath.Length - 15) -eq "_specpavast.xml")) {
+                $Ready = $False
+                $BaseCompareActive = $True
+            }
+            Else { Write-Output "    Please enter a valid pavast file path" }
         }
-        else{Echo "    Please enter a valid pavast file path"}
-        }
-        else
-        {
-        $Ready = $false
-        }
+        else { Write-Output "    Please enter a valid pavast file path" }
     }
+    else {
+        $Ready = $false
+    }
+}
+
+#Collecting <Id> for orverriding
+Write-Output " "
+$Id = Read-Host "    <Id> Override value(optional, press enter to skip)"
+    
+
 
 function Get-CompareDescriptiveName {
-    param ( [string]$DescriptiveName )
-    $Found = $False
-    $script:UBKArray | ForEach-Object {
-        if ($_."Abbr Name" -ceq $DescriptiveName -and $_."Life Cycle State" -eq "Valid" -and $_."Domain Name" -eq "AUTOSAR" -and  ($_."Element" -eq "x" -or $_."ProperName" -eq "x")) {
-            $Found = $True
-            $LongName = $_."Long Name En"
-            }
-        }
+    param ([string]$DescriptiveName)
+    # If length is 1 character, user confirmation is requested
+    $colour = if ($DescriptiveName.Length -eq 1) { "orange" } else { "green" }
 
-    if($Found){ #Found an AUTOSAR name
-        if($DescriptiveName.Length -eq 1){$Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>" }else{$Result = "<p style='color:green'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>"}
+    # Iterate through the $UBKArray using a foreach loop
+    foreach ($item in $script:UBKArray) {
+        if ($item."Abbr Name" -ceq $DescriptiveName -and $item."Life Cycle State" -eq "Valid" -and $item."Domain Name" -eq "AUTOSAR" -and ($item."Element" -eq "x" -or $item."ProperName" -eq "x")) {
+            # Found an AUTOSAR entry
+            return "<p style='color:$colour'>$DescriptiveName - " + $item."Long Name En" + " (AUTOSAR)</p>"
         }
-    else {
-        $script:UBKArray | ForEach-Object {
-        if ($_."Abbr Name" -ceq $DescriptiveName -and $_."Life Cycle State" -eq "Valid" -and $_."Domain Name" -eq "RB" -and  ($_."Element" -eq "x" -or $_."ProperName" -eq "x")) {
-            $Found = $True
-            $LongName = $_."Long Name En"
-            }
-        }
-        if($Found) {
-            $Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName+" (RB)</p>"}
-        else {
-            $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
-            }
-        }
-        
-    return $Result
     }
 
+    foreach ($item in $script:UBKArray) {
+        if ($item."Abbr Name" -ceq $DescriptiveName -and $item."Life Cycle State" -eq "Valid" -and $item."Domain Name" -eq "RB" -and ($item."Element" -eq "x" -or $item."ProperName" -eq "x")) {
+            # Found an RB entry
+            return "<p style='color:orange'>$DescriptiveName - " + $item."Long Name En" + " (RB)</p>"
+        }
+    }
+
+    # If no AUTOSAR or RB entry was found
+    return "<p style='color:red'>$DescriptiveName - not present in UBK abbreviations </p>"
+}
+
+    
+    
 
 function Get-IdCompareResult {
     param ([string]$MessagePartIn, [string]$idIn )
-     if($MessagePartIn -ceq $idIn) {$Result = "<p style='color:green' >"+ $MessagePartIn +"</p>" } else {$Result ="<p style='color:red'>"+ $MessagePartIn + " - <Id> not equal to $idIn (Id)</p>"}
-     Return $Result
+    if ($MessagePartIn -ceq $idIn) {
+        Return "<p style='color:green' >" + $MessagePartIn + "</p>" 
     }
+    else {
+        Return "<p style='color:red'>" + $MessagePartIn + " - &lt;Id&gt; not equal to $idIn (Id)</p>"
+    }
+ 
+}
 
 
 #Checking the validity of pp
 function Get-Comparepp {
-    param ([string[]]$pp)
-    $Found = $False     
-    if($pp -eq 'r')
-                {$Result = "<p style='color:Orange'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
-    elseif($pp -eq 'mask')
-                {$Result = "<p style='color:Orange'> $pp -  only valid for signal qualifier(Sq) mask calibrations</p>"}
-    else 
-                {
-                $script:UBKArray | ForEach-Object {
-                    if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name"))
-                        {
-                        $Found = $True
-                        $LongName = $_."Long Name En"
-                        }
-                        }
-                     if($Found)
-                            {
-                            $Result = "<p style='color:green'>$pp - "+$LongName+"</p>"
-                            }
-                        else
-                            {
-                            $Result ="<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
-                            }
-                 }
-    return $Result
- }
+    param ([string]$pp)
+    #Special pps    
+    if ($pp -eq 'r')
+    { Return "<p style='color:Orange'> $pp -  'r'=resistance, 'rat'=ratio </p>" }
+    #Special pps
+    if ($pp -eq 'mask')
+    { Return "<p style='color:Orange'> $pp -  only valid for signal qualifier(Sq) mask calibrations</p>" }
+    
+    #Normal case
+    foreach ($item in $script:UBKArray) {
+        if ( ($item."Logical" -eq "x" -or $item."Physical" -eq "x" ) -and ($item."Life Cycle State" -eq "Valid") -and ($pp -ceq $item."Abbr Name")) {
+            Return "<p style='color:green'>$pp - " + $item."Long Name En" + "</p>"    
+        }
+    }                
+    return "<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
+}
 
 #Splitting the string to Abbrevations
 function Get-SplittedArray {
-    param ([string[]]$Unsplitted)
-    [char[]]$newtext  =@()
-    foreach ($character in $Unsplitted.ToCharArray())
-        {
-        if ([Char]::IsUpper($character) -or [Char]::ISNumber($character)){$newtext +='*'}
+    param ([string]$Unsplitted)
+    [char[]]$newtext = @()
+    foreach ($character in $Unsplitted.ToCharArray()) {
+        if ([Char]::IsUpper($character) -or [Char]::ISNumber($character)) { $newtext += '*' }
         $newtext += $character
-        }
+    }
     $Result = -Join $newtext
     $Result = $Result.TrimStart('*')
     return $Result.Split('*')
-    }
+}
 
 function Get-ContinuousCapitalArray {
-    param ([string[]]$Unsplitted)
-    [char[]]$newtext  =@()
-    #To take all the values from last of the message
-    $Unsplitted = $Unsplitted +"X"
-    [string[]]$StringArray =@()
-    [string[]]$ReturnArray=@()
-    foreach ($character in $Unsplitted.ToCharArray())
-        {
-        if ([Char]::IsUpper($character)){$newtext += $character;$Once=$True;}else{if($Once){$newtext += "*";$Once=$False} }
+    param ([string]$Unsplitted)
+    
+    $newtext = ""
+    $ReturnArray = @()
+    
+    # Add a dummy small letter at the end to detect final sequence
+    $Unsplitted += "x"
+        
+    foreach ($character in $Unsplitted.ToCharArray()) {
+        if ([char]::IsUpper($character)) {
+            # If the character is uppercase, append it to the temporary string
+            $newtext += $character
         }
-    $Result = -Join $newtext
-    $Result = $Result.Trim('*')
-    $StringArray=  $Result.Split('*')
-
-    $Count = 0
-    while($Count -lt $StringArray.Length)
-        {
-        if($StringArray[$Count].Length -gt 2){$ReturnArray += $StringArray[$Count].SubString(0,$StringArray[$Count].Length -1)}
-        $Count++
+        else {
+            # When encountering a non-uppercase character, check for a sequence
+            if ($newtext.Length -gt 2) {
+                # Add to return array only if the sequence is more than 2 characters
+                $ReturnArray += $newtext
+            }
+            # Reset temporary string after processing
+            $newtext = ""
         }
-
-
+    }
     return $ReturnArray
-    }
+} 
 
-function Get-CompareCapitalName{
-    param ( [string]$DescriptiveName )
-
-    $Result =""
+function Get-CompareCapitalName {
+    param ([string]$DescriptiveName )
   
-    $script:UBKArray | ForEach-Object {
-        if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveName)){ 
-        $Result = "<p style='color:green'>$DescriptiveName - "+ $_."Long Name En"+"</p>"
+    foreach ($item in $script:UBKArray) {
+        if ( ($item."Domain Name" -eq "AUTOSAR" -or $item."Domain Name" -eq "RB" ) -and $item."Life Cycle State" -eq "Valid" -and ($item."Abbr Name" -ceq $DescriptiveName)) { 
+            Return "<p style='color:green'>$DescriptiveName - " + $item."Long Name En" + "</p>"
         }
-     }
-     $DescriptiveNameModified = $DescriptiveName.SubString(0,1) + $DescriptiveName.SubString(1, $DescriptiveName.Length - 1).ToLower()
- 
-     if($Result -eq ""){
-            $script:UBKArray | ForEach-Object {
-
-                if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveNameModified)){ 
-                $Result = "<p style='color:Blue' >$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified"+"</p>"}}
-                }
-
-
-    if($Result -eq ""){$Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations</p>"}
-    return $Result
     }
 
-    
-    
-  function Get-LengthCheckResult{
-    param ( [string]$CIdentifier )
-    $Sections = $CIdentifier.Split('_')
-    $Result =""
-
-    $BaseCounter = 0
-    while($BaseCounter -lt $Sections.Length)
-        {
-        if($Sections[$BaseCounter].Length -gt 20)
-        {
-        $Result = $Result + "<p style='color:red;font-weight: bold;' >Length of '" + $Sections[$BaseCounter]+"' : " + $Sections[$BaseCounter].Length + " (Failed (>20))</p>"
+    $DescriptiveNameModified = $DescriptiveName.SubString(0, 1) + $DescriptiveName.SubString(1).ToLower()
+ 
+    foreach ($item in $script:UBKArray) {
+        if ( ($item."Domain Name" -eq "AUTOSAR" -or $item."Domain Name" -eq "RB" ) -and $item."Life Cycle State" -eq "Valid" -and ($item."Abbr Name" -ceq $DescriptiveNameModified)) { 
+            Return "<p style='color:Blue' >$DescriptiveName - not present in UBK, Recommendation - $DescriptiveNameModified" + "</p>"
         }
-        else
-        {
-        $Result = $Result + "<p style='color:green;font-weight: bold;'>Length of '" + $Sections[$BaseCounter]+"' : "+$Sections[$BaseCounter].Length +" (Ok (<=20))</p>"
-       }
-        $BaseCounter ++
-   }
-     return $Result
-   }
+    }
+    Return "<p style='color:red'>$DescriptiveName - not present in UBK abbrevations</p>"
+    
+}
+
+   
+function Get-LengthCheckResult {
+    param ([string]$CIdentifier)
+    
+    $Sections = $CIdentifier.Split('_')
+    $Result = ""
+
+    foreach ($Section in $Sections){
+        $Length = $Section.Length
+        $Color = if ($Length -gt 20) { "red" } else { "green" }
+        $Status = if ($Length -gt 20) { "Failed (&gt;20)" } else { "Pass (&lt;=20)" }
+        
+        # Use string interpolation for readability
+        $Result += "<p style='color:$Color;font-weight:bold;'>Length of '$Section' : $Length $Status</p>"
+    }
+    
+    return $Result
+}
+
+function Get-Messages {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content $PavastFilePath)
+
+    $Messages = @()
+    foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-INTERFACES/SW-FEATURE-INTERFACE/SW-INTERFACE-EXPORTS/SW-INTERFACE-EXPORT/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS/SW-VARIABLE-REF-SYSCOND")) {
+        $variableRef = $ref.SelectSingleNode("SW-VARIABLE-REF").InnerText 
+        $Messages += $variableRef 
+    }
+    $Messages += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-INTERFACES/SW-FEATURE-INTERFACE/SW-INTERFACE-EXPORTS/SW-INTERFACE-EXPORT/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"
+    
+    Return $Messages
+}
 
 
+function Get-Calibrations {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content -Path $PavastFilePath)
+
+    $CodeGenerator = 'ASCET'
+    $code = $PavastData.SelectSingleNode("//MSRSW/ADMIN-DATA/COMPANY-DOC-INFOS/COMPANY-DOC-INFO/SDGS/SDG/SD[@GID='MATLAB-User']")
+    if ($code) { $CodeGenerator = 'MATLAB' }
+
+    $Calibrations = @()
+
+    if ($CodeGenerator -eq 'ASCET') {
+        foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS/SW-CALPRM-REF-SYSCOND")) {
+            $CalibRef = $ref.SelectSingleNode("SW-CALPRM-REF").InnerText 
+            $Calibrations += $CalibRef 
+        }
+        $Calibrations += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF"
+    }
+    else {
+        foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS/SW-CALPRM-REF-SYSCOND")) {
+            $CalibRef = $ref.SelectSingleNode("SW-CALPRM-REF").InnerText 
+            $Calibrations += $CalibRef 
+        }
+        $Calibrations += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CALPRM-REFS")."SW-CALPRM-REF"
+
+    }
+    Return $Calibrations
+}
+
+function Get-Variables {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content -Path $PavastFilePath)
+    
+    $CodeGenerator = 'ASCET'
+    $code = $PavastData.SelectSingleNode("//MSRSW/ADMIN-DATA/COMPANY-DOC-INFOS/COMPANY-DOC-INFO/SDGS/SDG/SD[@GID='MATLAB-User']")
+    if ($code) { $CodeGenerator = 'MATLAB' }
+    
+    $Variables = @()
+    $Messages = @()
+    
+    if ($CodeGenerator -eq 'ASCET') {
+        foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS/SW-VARIABLE-REF-SYSCOND")) {
+            $CalibRef = $ref.SelectSingleNode("SW-VARIABLE-REF").InnerText 
+            $Variables += $CalibRef 
+        }
+        $Variables += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"
+    }
+    else {
+        foreach ($ref in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS/SW-VARIABLE-REF-SYSCOND")) {
+            $CalibRef = $ref.SelectSingleNode("SW-VARIABLE-REF").InnerText 
+            $Variables += $CalibRef 
+        }
+        $Variables += $PavastData.SelectSingleNode("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-VARIABLE-REFS")."SW-VARIABLE-REF"
+    }
+    
+    #Removing exported variables
+    $Messages = Get-Messages -PavastFilePath $PavastFilePath
+    $LocalVariables = @()
+    foreach ($variable in $Variables) {
+        if ($Messages -contains $variable) {} 
+        else {
+            $LocalVariables += $variable
+        }
+    }
+
+    Return $LocalVariables
+}
+
+function Get-FCName {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content -Path $PavastFilePath)
+    $FCName = $PavastData.SelectSingleNode("//MSRSW/SW-SYSTEMS/SW-SYSTEM/SW-COMPONENT-SPEC/SW-COMPONENTS/SW-FEATURE").'SHORT-NAME'
+    return $FCName
+}
+
+#Messages
+#Variables
+#Calibrations
+function Get-AnalysisTable{
+    param ([string[]]$VariableArray, [String]$VariableType, [string]$IdIn, [string[]]$ExVarArray, [string]$ExVarType, [Boolean]$BaseCompareActive, [string[]]$BaseVariableArray)
+    $Result =""
+    $idVariable = $VariableType.ToLower()
+    $Result = "<table id='$idVariable'><thead><tr><th>$VariableType</th><th>Findings</th></tr></thead><tbody>"
+    
+    foreach ($Variable In $VariableArray) {
+        #Ignoring class instance variables in matlab generated pavast - 
+        ###Needs better way to identify class instances
+        if ($Variable.Substring($variable.Length - 2) -ceq '_I') {continue }
+        
+        #Splitting the messages to different parts
+        $VariableParts = @()
+        $VariableParts = $Variable.Split('_')
+     
+        #First column
+        if (!$BaseCompareActive -or ($BaseVariableArray -contains $Variable)) {
+            $Result += '<tr><td>' + $Variable + '</td><td>'
+        }
+        else {
+            $Result += '<tr style="background-color:#aafa93" ><td>' + $Variable + '</td><td>'
+        }
+     
+        #Checking number of underscores in variables.
+        if($VariableType -eq "Calibrations"){
+            if ($VariableParts.Length -ne 3) {
+                $Result += "<p style='color:red'>Should have exact 2 '_'s in the name.<br>No other checks executed</p>";
+                Continue
+            }
+
+        }
+        else{
+            if ($VariableParts.Length -gt 3 -or $VariableParts.Length -lt 2) {
+                $Result += "<p style='color:red' >DGS recommend maximum of 2 '_'s and minimum one '_'. <br>No other checks executed.</p>"; 
+                Continue 
+            }
+        }
+        #Checking <Id> matching FC name
+        $Result += Get-IdCompareResult -MessagePartIn $VariableParts[0] -idIn $IdIn
+       
+        #Splitting the second part of message
+        [String[]]$SplittedVariable = Get-SplittedArray($VariableParts[1])
+       
+        #Checking <pp>    
+        $Result += Get-Comparepp -pp $SplittedVariable[0]
+    
+        #Checking descriptive name
+        $VariableCounter = 1
+        while ($VariableCounter -lt $SplittedVariable.Length) {
+            $Result += Get-CompareDescriptiveName -DescriptiveName $SplittedVariable[$VariableCounter]
+            $VariableCounter++
+        }
+        
+        #Checking last part of variable if it is present
+        if ($VariableParts.Length -gt 2) {
+            if ($ExVarArray -contains $VariableParts[2]) {
+            } else {
+                $Result += "<p style='color:red' >"+$VariableParts[2]+" is not a valid '"+$ExVarType+"'</p>" 
+            }
+        }
+        #Continuos Capital letter check
+        [String[]]$SplittedVariable = Get-ContinuousCapitalArray -Unsplitted $VariableParts[1]
+            
+        if ($SplittedVariable.Length -gt 0) { $Result += "<p><u>Continuous capital letter check</u></p>" }
+        #Checking descriptive name
+        $MessageCounter = 0
+        while ($MessageCounter -lt $SplittedVariable.Length) {
+            $Result += Get-CompareCapitalName -DescriptiveName $SplittedVariable[$MessageCounter]
+            $MessageCounter++
+        }
+                  
+        $Result += Get-LengthCheckResult -CIdentifier $Variable
+        $Result += '</td></tr>'
+    }
+    
+    $Result += "</tbody></table>"
+    Return $Result
+}
 
 
-
-echo "    Reading pavast..."
+Write-Output "    Reading pavast..."
 $script:UBKArray = Import-Csv $script:UBKDownlaodPath -delimiter ";"
 
 [String[]]$Calibrations = @()
 [String[]]$Messages = @()
+[String[]]$Variables = @()
+
 [String[]]$BaseCalibrations = @()
 [String[]]$BaseMessages = @()
+[String[]]$BaseVariables = @()
 
 
-
-$SWSYSTEMS = 'SW-SYSTEMS'
-$SWSYSTEM = 'SW-SYSTEM'
-$ADMINDATA = 'ADMIN-DATA'
-$COMPANYDOCINFOS = 'COMPANY-DOC-INFOS'
-$COMPANYDOCINFO= 'COMPANY-DOC-INFO'
-$SWCOMPONENTSPEC = 'SW-COMPONENT-SPEC'
-$SWCOMPONENTS = 'SW-COMPONENTS'
-$SWFEATURE = 'SW-FEATURE'
-$SHORTNAME = 'SHORT-NAME'
-$SWFEATUREOWNEDELEMENTSETS = 'SW-FEATURE-OWNED-ELEMENT-SETS'
-$SWFEATUREOWNEDELEMENTSET ='SW-FEATURE-OWNED-ELEMENT-SET'
-$SWFEATUREOWNEDELEMENTS ='SW-FEATURE-OWNED-ELEMENTS'
-$SWFEATUREELEMENTS = 'SW-FEATURE-ELEMENTS'
-$SWCALPRMREFS = 'SW-CALPRM-REFS'
-$SWCALPRMREF = 'SW-CALPRM-REF'
-$USERDEFINEDTYPE = 'USER-DEFINED-TYPE'
-$SWVARIABLEREFS = 'SW-VARIABLE-REFS'
-$SWVARIABLEREF = 'SW-VARIABLE-REF'
-$SWVARIABLEREFSYSCOND = 'SW-VARIABLE-REF-SYSCOND'
-$SWCALPRMREFSYSCOND = 'SW-CALPRM-REF-SYSCOND'
-
-$PavastData = [xml](Get-Content $PavastFilePath)
-
-
-$FCName= $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SHORTNAME
- 
- $CodeGenerator = 'ASCET'
- $PavastData.MSRSW.$ADMINDATA.$COMPANYDOCINFOS.$COMPANYDOCINFO.SDGS.SDG.SD.GID | ForEach-Object {
- if ( $_ -eq 'ASCET-User')
-    {
-    $CodeGenerator = 'ASCET'
-    
-    }
- elseif ( $_ -eq 'MATLAB-User')
-    {
-    $CodeGenerator = 'MATLAB'
-    }
-
-}
-
-
-if($CodeGenerator -eq 'ASCET')
-{
-    $Calibrations = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREFSYSCOND.$SWCALPRMREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF.length -gt 0)
-    {
-    $Calibrations += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF
-    }
-    $Messages = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREFSYSCOND.$SWVARIABLEREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF.length -gt 0)
-    {
-    $Messages += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF
-    }
-}
-elseif($CodeGenerator -eq 'MATLAB')
-{ 
-    $Calibrations = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREFSYSCOND.$SWCALPRMREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF.length -gt 0)
-    {
-    $Calibrations += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF
-    }
-    $Messages = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREFSYSCOND.$SWVARIABLEREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF.length -gt 0)
-    {
-     $Messages += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF
-    }
-}
-else
-{
-   Echo "    Cannot read Pavast"
-   Exit
-}
+$FCName = Get-FCName($PavastFilePath)
+$Messages = Get-Messages($PavastFilePath)
+$Calibrations = Get-Calibrations($PavastFilePath)
+$Variables = Get-Variables($PavastFilePath)
 
 #Reading Base pavast file
-if($BaseCompareActive){
-$PavastData = [xml](Get-Content $BasePavastFilePath)
-
-
-$BaseFCName= $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SHORTNAME
- 
- $CodeGenerator = ""
- $PavastData.MSRSW.$ADMINDATA.$COMPANYDOCINFOS.$COMPANYDOCINFO.SDGS.SDG.SD.GID | ForEach-Object {
- if ( $_ -eq 'ASCET-User')
-    {
-    $CodeGenerator = 'ASCET'
-    
+if ($BaseCompareActive) {
+    if ($FCName -ne (Get-FCName($BasePavastFilePath))) {
+        Write-Output "    Wrong base pavast file used"
+        $BaseCompareActive = $False
     }
- elseif ( $_ -eq 'MATLAB-User')
-    {
-    $CodeGenerator = 'MATLAB'
-    }
-
-}
-
-
-if($CodeGenerator -eq 'ASCET')
-{
-    $BaseCalibrations = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREFSYSCOND.$SWCALPRMREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF.length -gt 0)
-    {
-    $BaseCalibrations += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF
-    }
-    $BaseMessages = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREFSYSCOND.$SWVARIABLEREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF.length -gt 0)
-    {
-    $BaseMessages += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTS.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF
+    else {
+        $BaseMessages = Get-Messages($BasePavastFilePath)
+        $BaseCalibrations = Get-Calibrations($BasePavastFilePath)
+        $BaseVariables = Get-Variables($BasePavastFilePath)
     }
 }
-elseif($CodeGenerator -eq 'MATLAB')
-{ 
-    $BaseCalibrations = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREFSYSCOND.$SWCALPRMREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF.length -gt 0)
-    {
-    $BaseCalibrations += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWCALPRMREFS.$SWCALPRMREF
-    }
-    $BaseMessages = $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREFSYSCOND.$SWVARIABLEREF
-    if($PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF.length -gt 0)
-    {
-     $BaseMessages += $PavastData.MSRSW.$SWSYSTEMS.$SWSYSTEM.$SWCOMPONENTSPEC.$SWCOMPONENTS.$SWFEATURE.$SWFEATUREOWNEDELEMENTSETS.$SWFEATUREOWNEDELEMENTSET.$SWFEATUREELEMENTS.$SWVARIABLEREFS.$SWVARIABLEREF
-    }
-}
-else
-{
-   Echo "    Cannot read base Pavast"
-   Exit
-}
-}
-else
-{
-$BaseCalibrations = $Calibrations
-$BaseMessages = $Messages
-}
-if($BaseCompareActive -and $FCName -ne $BaseFCName)
-{
-    Echo "    Wrong base pavast file used"
-    $BaseCalibrations = $Calibrations
-    $BaseMessages = $Messages
+
+
+if ($Id -eq "") {
+    $Id = $FCName.Split("_")[0]
 }
 
-echo "    Analyzing messages..."
 
-#break
-<#
-Variable ::="<Id>"_"<pp>"  "<DescriptiveName>"[_"<ExVar>"]
-#>
-
-$Id = $FCName.Split("_")[0]
-
-$Counter = 0
 
 $reportHTML = "<!DOCTYPE html>
 <html>
 <head><meta charset='UTF-8'>
 <style>
+
 table {
   font-family: 'Trebuchet MS', Arial, Helvetica, sans-serif;
   border-collapse: collapse;
@@ -433,8 +471,7 @@ th {
   text-align: left;
   background-color: #4CAF50;
   color: white;
-  }
-
+}
 
 p.fcname {
 text-align:center;
@@ -447,6 +484,10 @@ div.warning {
 background-color: #fff;
 width:800px;
 margin-top: 40vh;
+position: absolute;
+left:50%;
+transform: translateX(-50%);
+text-align: center;
 padding: 0px 0px 20px 0px;
 box-shadow: 0 0 20px 0 rgba(0,0,0,2);
 border-radius: 14px;
@@ -471,15 +512,11 @@ border: none;
 padding: 10px 24px;
 border-color: #4cae4c;
 }
-
 </style>
-
 <title>UBKCheck report</title>
-
 </head>
 <body style='background-color: #ececec;' onload='ShowIUnderstandCheck()'>
 
-<center>
 <div id='Div1' class='warning'>
 <div class='warninghead' >Please note !</div>
 <ul style='color:#5e5e5e;text-align: left;padding:12px 12px 12px 30px;'>
@@ -487,177 +524,34 @@ border-color: #4cae4c;
   <li style='padding-bottom:6px'>If you are updating the name of existing variables(to fix the identified warning) extra care must be taken to check to see if it impacts anywhere else.</li>
   <li>Class instance names and instance specific variables are not checked in the current tool.</li>
 </ul> 
-<button onclick='MakeVisible()' class ='understand'>I Understand</button></div></center>
-
-
+<button onclick='MakeVisible()' class ='understand'>I Understand</button></div>
 <div style='display: none;' id='Div2'>
 <table class='legend'><tbody style='text-align:center'>
 <tr ><th colspan='3' style='text-align:center'>Legend and statistics</th></tr>
-<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckOk' checked='true'checked='true'/></td><td><p style='color:Green'>All Ok</p></td><td id='OkCount'>16</td></tr>
-<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckSuggest' checked='true'/></td><td><p style='color:Blue'>Suggestion</p></td><td id='SuggestionCount'>0</td></tr>
-<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckError' checked='true'/> </td><td><p style='color:Red'>Error</p></td><td id='ErrorCount'>37</td></tr>
-<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckWarning' checked='true'/></td><td><p style='color:Orange'>User confirmation needed</p></td><td id='WarningCount'>27</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckOk' checked/></td><td><p style='color:Green'>All Ok</p></td><td id='OkCount'>16</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckSuggest' checked/></td><td><p style='color:Blue'>Suggestion</p></td><td id='SuggestionCount'>0</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckError' checked/> </td><td><p style='color:Red'>Error</p></td><td id='ErrorCount'>37</td></tr>
+<tr><td  style='width:10%'><input type='checkbox'  onchange='ApplyFilter()' id='CheckWarning' checked/></td><td><p style='color:Orange'>User confirmation needed</p></td><td id='WarningCount'>27</td></tr>
 </tbody></table>
+<p class='fcname'>$FCName</p>"
+
+$ExVarMessageArray = @("MP","f","msg","f_msg", "Sq")
+$ExVarVariableArray = @('c','p','a','en','un','st','pfn','cb8','pb8','ab8','cb16','pb16','ab16','cb32','pb32','ab32','cu8',
+                        'pu8','au8','cu16','pu16','au16','cu32','pu32','au32','cu64','pu64','au64','cui','pui','aui','cs8','ps8','as8',
+                        'cs16','ps16','as16','cs32','ps32','as32','cs64','ps64','as64','csi','psi','asi','cr32','pr32','ar32')
+$ExVarCalibArray = @('C','CA','T','FT','GT','M','FM','GM','AX','ASC')
 
 
+Write-Output "    Analyzing messages..."
+$reportHTML += Get-AnalysisTable -VariableArray $Messages -VariableType "Messages" -IdIn $Id -ExVarArray $ExVarMessageArray -ExVarType "ExVar" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseMessages
+$reportHTML += '<br><br>'
+Write-Output "    Analyzing variables..."
+$reportHTML += Get-AnalysisTable -VariableArray $Variables -VariableType "Variables" -IdIn $Id -ExVarArray $ExVarVariableArray -ExVarType "ExVarLoc" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseVariables
+$reportHTML += '<br><br>'
+Write-Output "    Analyzing calibrations..."
+$reportHTML += Get-AnalysisTable -VariableArray $Calibrations -VariableType "Calibrations" -IdIn $Id -ExVarArray $ExVarCalibArray -ExVarType "ExCal" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseCalibrations
 
-<p class='fcname'>$FCName</p>
-
-<table id='variables'><tr><th>Variables</th><th>Findings</th></tr>"
-
-while ($Counter -lt $Messages.Length) {
-
-    #Ignoring class instance variables in matlab generated pavast - 
-    ###Needs better way to identify class instances
-    if($Messages[$Counter].Substring($Messages[$Counter].Length - 2) -ceq '_I'){$Counter++;continue}
-    
-    $MessageParts =@()
-    $MessageParts = $Messages[$Counter].Split('_')
-
-
-    $BaseCounter =0
-    $MessageFound = $False
-    while($BaseCounter -lt $BaseMessages.Length -and $MessageFound -eq $False)
-        {
-        if($BaseMessages[$BaseCounter] -eq $Messages[$Counter])
-        {
-        $MessageFound = $True
-        }
-
-        $BaseCounter ++
-        }
-    
-    #First column
-    if($MessageFound)
-    {
-    $reportHTML += '<tr><td>'+ $Messages[$Counter] +'</td><td>'
-    }
-    else
-    {
-    $reportHTML += '<tr style="background-color:#aafa93" ><td>'+ $Messages[$Counter] +'</td><td>'
-    }
-
-       
-    #Checking number of underscores in variables.
-    if($MessageParts.Length -gt 3 -or $MessageParts.Length -lt 2){ $reportHTML += "<p style='color:red' >DGS recommend maximum of 2 '_'s and minimum one '_'. </br>No other checks executed.</p>";$Counter++;Continue}
-
-    #Checking <Id> matching FC name
-    $reportHTML += Get-IdCompareResult $MessageParts[0] $Id
-   
-    #Splitting the second part of message
-    [String[]]$SplittedMessage = Get-SplittedArray($MessageParts[1])
-   
-    #Checking <pp>    
-    $reportHTML += Get-Comparepp($SplittedMessage[0])
-
-    #Checking descriptive name
-    $MessageCounter = 1
-    while($MessageCounter -lt $SplittedMessage.Length){
-            $reportHTML +=  Get-CompareDescriptiveName($SplittedMessage[$MessageCounter])
-            $MessageCounter++}
-
-    #Checking last part of message if it is present
-    if($MessageParts.Length -gt 2){
-       if(($MessageParts[2] -ceq 'MP') -or ($MessageParts[2] -ceq 'f') -or ($MessageParts[2] -ceq 'Sq') -or ($MessageParts[2] -ceq 'msg') -or ($MessageParts[2] -ceq 'f_msg')){}else{$reportHTML += "<p style='color:red' >Allowed 'ExVar's are  MP | f | msg | f_msg | Sq </p>"}
-    }
-
-
-    #Continuos Capital letter check
-    [String[]]$SplittedMessage = Get-ContinuousCapitalArray($MessageParts[1])
-        
-    if($SplittedMessage.Length -gt 0){$reportHTML +="<p><u>Continuous capital letter check</u></p>"}
-    #Checking descriptive name
-    $MessageCounter = 0
-    while($MessageCounter -lt $SplittedMessage.Length){
-          $reportHTML += Get-CompareCapitalName($SplittedMessage[$MessageCounter])
-          $MessageCounter++
-            }
-              
-$reportHTML += Get-LengthCheckResult($Messages[$Counter])
-$Counter++
-$reportHTML += '</td>'}
-
-
-$reportHTML += '</table></br></br><table id="calibrations"><tr><th>Calibrations</th><th>Findings</th></tr>'
-
-echo "    Analyzing calibrations..."
-
-$Counter = 0
-while ($Counter -lt $Calibrations.Length) {
-    
-    [String[]]$CalibrationParts = $Calibrations[$Counter].Split('_')
-    
-    $BaseCounter =0
-    $CalibrationFound = $False
-    while($BaseCounter -lt $BaseCalibrations.Length -and $CalibrationFound -eq $False)
-        {
-        if($BaseCalibrations[$BaseCounter] -eq $Calibrations[$Counter])
-        {
-        $CalibrationFound = $True
-        }
-
-        $BaseCounter ++
-        }
-    
-    #First column
-    if($CalibrationFound)
-    {
-    $reportHTML += '<tr><td>'+ $Calibrations[$Counter] +'</td><td>' 
-    }
-    else
-    {
-    $reportHTML += '<tr style="background-color:#aafa93" ><td>'+ $Calibrations[$Counter] +'</td><td>' 
-    }
-
-    #Checking number of underscores in variables.
-    if($CalibrationParts.Length -ne 3){$reportHTML += "<p style='color:red'>Should have exact 2 '_'s in the name. </br>No other checks executed</p>";$Counter++;Continue}
-       
-    #Checking <Id> matching FC name
-    $reportHTML += Get-IdCompareResult $CalibrationParts[0] $Id
-
-    #Splitting descriptive name
-    [String[]]$SplittedCalibrations = Get-SplittedArray($CalibrationParts[1])
-    
-    #Checking <pp>  
-    $reportHTML += Get-Comparepp($SplittedCalibrations[0])
-    
-    #Checking descriptive name
-    $CalibPartsCounter = 1
-    while($CalibPartsCounter -lt $SplittedCalibrations.Length){
-            $reportHTML +=  Get-CompareDescriptiveName($SplittedCalibrations[$CalibPartsCounter])
-            $CalibPartsCounter++
-            }
-
-    #Checking the ending of calibrations
-    if(($CalibrationParts[2] -ceq 'C') -or
-       ($CalibrationParts[2] -ceq 'CA') -or
-       ($CalibrationParts[2] -ceq 'T') -or
-       ($CalibrationParts[2] -ceq 'FT') -or
-       ($CalibrationParts[2] -ceq 'GT') -or
-       ($CalibrationParts[2] -ceq 'M') -or
-       ($CalibrationParts[2] -ceq 'FM') -or
-       ($CalibrationParts[2] -ceq 'GM') -or
-       ($CalibrationParts[2] -ceq 'AX') -or
-       ($CalibrationParts[2] -ceq 'ASC') ){} else {$reportHTML += "<p style='color:red'>'"+$CalibrationParts[2]+"' is not a valid 'ExCal'</p>"}
-
-    #Continuos Capital letter check
-    [String[]]$SplittedCalibrations = Get-ContinuousCapitalArray($CalibrationParts[1])
-        
-    if($SplittedCalibrations.Length -gt 0){$reportHTML +="<p><u>Continuous capital letter check</u></p>"}
-
-    #Checking Capital name
-    $CalibPartsCounter = 0
-    while($CalibPartsCounter -lt $SplittedCalibrations.Length){
-          $reportHTML += Get-CompareCapitalName($SplittedCalibrations[$CalibPartsCounter])
-          $CalibPartsCounter++
-            }
-    $reportHTML += Get-LengthCheckResult($Calibrations[$Counter])
-    $Counter++
-    $reportHTML += '</td>'
-}
-
-
-$reportHTML += ' </tr></table></div><script>
+$reportHTML += '</div><script>
 function ShowIUnderstandCheck() {
     if (typeof(Storage) !== "undefined") {
         var Lastaccepteddate = new Date();
@@ -696,9 +590,10 @@ function ApplyFilter() {
 	var showSuggest = document.getElementById("CheckSuggest").checked;
 	var showErr = document.getElementById("CheckError").checked;
 	var showConfirm = document.getElementById("CheckWarning").checked;
-	
-	FilterTable(document.getElementById("variables"), showok, showSuggest, showErr, showConfirm);
-	FilterTable(document.getElementById("calibrations"), showok, showSuggest, showErr, showConfirm);
+	var ids = ["messages", "variables", "calibrations"];
+    for (iCount =0; iCount <3; iCount++) {
+	FilterTable(document.getElementById(ids[iCount]), showok, showSuggest, showErr, showConfirm);
+    }
 }
 
 function FilterTable(table, showok, showSuggest, showErr, showConfirm) {
@@ -733,9 +628,9 @@ var ErrorCount = 0;
 var WarningCount = 0;
 var AllOkCount = 0;
 var tableCalibrations;
-for(iCount = 0; iCount < 2;iCount++){
-if(iCount==0){tableVariables = document.getElementById("variables");}
-else{tableVariables = document.getElementById("calibrations");}
+var ids = ["messages", "variables", "calibrations"];
+for (iCount =0; iCount <3; iCount++) {
+ tableVariables = document.getElementById(ids[iCount]);
 
 var tr = tableVariables.getElementsByTagName("tr");
 	for (r = 1; r < tr.length; r++) {
@@ -758,35 +653,31 @@ var tr = tableVariables.getElementsByTagName("tr");
 		if(allok){AllOkCount++;}
 }
 }	
-
 document.getElementById("OkCount").innerHTML = AllOkCount;
 document.getElementById("SuggestionCount").innerHTML = SuggestionCount;
 document.getElementById("ErrorCount").innerHTML = ErrorCount;
 document.getElementById("WarningCount").innerHTML = WarningCount;
-
-
 }
-
 
 </script></body></html>'
 
 
 #### Automation Tracking #####
-$uriFeatureTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=ubkcheck&userId="+$env:UserName+"&componentName="+$FCName+"&result="+$current_version + "-P"
+$uriFeatureTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/trackFeature?toolId=ubkcheck&userId=" + $env:UserName + "&componentName=" + $FCName + "&result=" + $current_version + "-P"
 $uriCountTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/save?toolId=ubkcheck&userId=" + $env:UserName
-        $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
-        [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
-        if(Invoke-WebRequest $uriFeatureTracking -Method GET){}
-        if(Invoke-WebRequest $uriCountTracking -Method GET){}
+$AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
+[System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
+if (Invoke-WebRequest $uriFeatureTracking -Method GET) {}
+if (Invoke-WebRequest $uriCountTracking -Method GET) {}
 #### Tracking Ends here #####
 
 
 #Final writing of test report
-Echo "    Opening report ... "
-if (Test-Path $Script:htmlPath -PathType leaf){
-remove-item $Script:htmlPath
+Write-Output "    Opening report ... "
+if (Test-Path $Script:htmlPath -PathType leaf) {
+    remove-item $Script:htmlPath
 }
-if(New-Item $Script:htmlPath){}
+if (New-Item $Script:htmlPath) {}
 Set-content -Path $Script:htmlPath  -Value $reportHTML
 
 Invoke-item $Script:htmlPath
