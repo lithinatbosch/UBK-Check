@@ -48,10 +48,29 @@ else
 
 function Get-CompareDescriptiveName {
     param ( [string]$DescriptiveName )
-    $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
+    $Found = $False
     $script:UBKArray | ForEach-Object {
-        if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveName)){ 
-        if($DescriptiveName.Length -eq 1){$Result = "<p style='color:orange'>$DescriptiveName - "+ $_."Long Name En"+"</p>" }else{$Result = "<p style='color:green'>$DescriptiveName - "+ $_."Long Name En"+"</p>"}}
+        if ($_."Abbr Name" -ceq $DescriptiveName -and $_."Life Cycle State" -eq "Valid" -and ($_."Element" -eq "x" -or $_."ProperName" -eq "x")) {
+            $Found = $True
+            $NameDomain = $_."Domain Name"
+            $LongName = $_."Long Name En"
+            }
+        }
+
+    if($Found){
+        if($NameDomain -eq "AUTOSAR") {
+            if($DescriptiveName.Length -eq 1){$Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>" }else{$Result = "<p style='color:green'>$DescriptiveName - "+ $LongName+" (AUTOSAR)</p>"}
+            }
+        elseif($NameDomain -eq "RB"){
+            $Result = "<p style='color:orange'>$DescriptiveName - "+ $LongName +" (RB)</p>" 
+            }
+        else {
+            $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
+            }
+
+        }
+    else {
+        $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
         }
     return $Result
     }
@@ -372,7 +391,16 @@ while ($Counter -lt $Calibrations.Length) {
             }
 
     #Checking the ending of calibrations
-    if(($CalibrationParts[2] -ceq 'C') -or ($CalibrationParts[2] -ceq 'T') -or ($CalibrationParts[2] -ceq 'M')){} else {$reportHTML += "<p style='color:red'>Calibration has to end with C, T or M</p>"}
+    if(($CalibrationParts[2] -ceq 'C') -or
+       ($CalibrationParts[2] -ceq 'CA') -or
+       ($CalibrationParts[2] -ceq 'T') -or
+       ($CalibrationParts[2] -ceq 'FT') -or
+       ($CalibrationParts[2] -ceq 'GT') -or
+       ($CalibrationParts[2] -ceq 'M') -or
+       ($CalibrationParts[2] -ceq 'FM') -or
+       ($CalibrationParts[2] -ceq 'GM') -or
+       ($CalibrationParts[2] -ceq 'AX') -or
+       ($CalibrationParts[2] -ceq 'ASC') ){} else {$reportHTML += "<p style='color:red'>'"+$CalibrationParts[2]+"' is not a valid 'ExCal'</p>"}
 
     #Continuos Capital letter check
     [String[]]$SplittedCalibrations = Get-ContinuousCapitalArray($CalibrationParts[1])
