@@ -2,10 +2,11 @@
 
 
 function Get-CompareDescriptiveName {
-    param ( [string[]]$DescriptiveName )
+    param ( [string]$DescriptiveName )
     $Result ="<p style='color:red'>$DescriptiveName - not present in UBK abbrevations </p>"
     $script:UBKArray | ForEach-Object {
-        if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveName)){ $Result = "<p style='color:green'>$DescriptiveName</p>" }
+        if( ($_."Domain Name" -eq "AUTOSAR" -or $_."Domain Name" -eq "RB" ) -and $_."Life Cycle State" -eq "Valid" -and ($_."Abbr Name" -ceq $DescriptiveName)){ 
+        if($DescriptiveName.Length -eq 1){$Result = "<p style='color:orange'>$DescriptiveName - "+ $_."Long Name En"+"</p>" }else{$Result = "<p style='color:green'>$DescriptiveName - "+ $_."Long Name En"+"</p>"}}
         }
     return $Result
     }
@@ -17,7 +18,7 @@ function Get-Comparepp {
          
     $Result ="<p style='color:red'> $pp - not a valid Physical or Logical 'pp' </p>"
     $script:UBKArray | ForEach-Object {
-        if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name")){ $Result = "<p style='color:green'> $pp</p>"}
+        if( ($_."Logical" -eq "x" -or $_."Physical" -eq "x" ) -and ($_."Life Cycle State" -eq "Valid") -and ($pp -ceq $_."Abbr Name")){ $Result = "<p style='color:green'>$pp - "+$_."Long Name En"+"</p>"}
         }
 
    if($pp -eq 'r'){$Result = "<p style='color:blue'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
@@ -167,6 +168,7 @@ $BrowseCSVFileClick ={
         [System.Windows.Forms.Application]::EnableVisualStyles()
         $Browse = New-Object System.Windows.Forms.OpenFileDialog
         $Browse.filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
+        $Browse.InitialDirectory = "C:\Users\"+$env:USERNAME.ToLower()+"\Downloads"
         $Loop = $True
         while($Loop){
             if ($Browse.ShowDialog() -eq "OK"){
@@ -177,7 +179,6 @@ $BrowseCSVFileClick ={
                 return
                 }
             }
-        $Browse.SelectedPath
         $Browse.Dispose()
         } 
     
@@ -189,6 +190,7 @@ $BrowsePavastFileClick ={
         [System.Windows.Forms.Application]::EnableVisualStyles()
         $Browse = New-Object System.Windows.Forms.OpenFileDialog
         $Browse.filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*"
+        $Browse.InitialDirectory = "C:\temp\" + $env:USERNAME.ToLower()
         $Loop = $True
         while($Loop){
             if ($Browse.ShowDialog() -eq "OK") {
@@ -199,8 +201,8 @@ $BrowsePavastFileClick ={
                 return
                 }
             }
-        $Browse.SelectedPath
         $Browse.Dispose()
+        return
         }
       
 $BrowsePavastButton.Add_Click($BrowsePavastFileClick)
@@ -347,6 +349,7 @@ while ($Counter -lt $Messages.Length) {
     while($MessagePartsCounter -lt $MessageParts.Length)
         {
         [String[]]$SplittedMessage = Get-SplittedArray($MessageParts[$MessagePartsCounter])
+        
         $MessageCounter = 0
         if(($MessagePartsCounter -eq 1) -and ($MessageParts[$MessageParts.Length -1] -cne 'I')){
             $reportHTML += Get-Comparepp($SplittedMessage[0])
@@ -379,18 +382,19 @@ while ($Counter -lt $Calibrations.Length) {
     if($MessageParts[0] -ceq $Id){$reportHTML += "<p style='color:green'>"+ $MessageParts[0] +"</p>" }else{$reportHTML += "<p style='color:red'>"+ $MessageParts[0]+ " - <Id> not equal to $Id </p>"}   
 
     #Checking the ending of calibrations
-    if(($MessageParts[$MessageParts.Length - 1] -ceq 'C') -or ($MessageParts[$MessageParts.Length - 1] -ceq 'T') -or ($MessageParts[$MessageParts.Length - 1] -ceq 'M')){} else {$reportHTML += "<p style='color:red'>Calibration has to end with C, T or M</p>"}
+    $SizeofSplittedArray = $MessageParts.Length - 1
+    if(($MessageParts[$MessageParts.Length - 1] -ceq 'C') -or ($MessageParts[$MessageParts.Length - 1] -ceq 'T') -or ($MessageParts[$MessageParts.Length - 1] -ceq 'M')){} else {$reportHTML += "<p style='color:red'>Calibration has to end with C, T or M</p>";$SizeofSplittedArray = $MessageParts.Length}
 
     $MessagePartsCounter = 1
     [String[]]$SplittedMessage = @()
-    while($MessagePartsCounter -lt ($MessageParts.Length - 1))
+    while($MessagePartsCounter -lt ($SizeofSplittedArray))
         {
         
         [String[]]$SplittedMessage = Get-SplittedArray($MessageParts[$MessagePartsCounter])
         
-        if($MessagePartsCounter -eq 1) {$reportHTML += Get-Comparepp($SplittedMessage[0])}
-        
-        $MessageCounter = 1 
+        $MessageCounter = 0
+        if($MessagePartsCounter -eq 1) {$reportHTML += Get-Comparepp($SplittedMessage[0]);$MessageCounter = 1}
+         
         while($MessageCounter -lt $SplittedMessage.Length){
             $reportHTML +=  Get-CompareDescriptiveName($SplittedMessage[$MessageCounter])
             $MessageCounter++
