@@ -8,10 +8,10 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.12.2"
+"                        Version : 1.12.3"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.12.2"
+$current_version = "1.12.3"
 $Script:htmlPath = "C:\Users\" + $env:USERNAME.ToLower() + "\AppData\Local\Temp\report.html"
 $DownloadToolPath = "C:\Users\" + $env:USERNAME.ToLower() + "\Desktop\"
 $IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
@@ -282,12 +282,22 @@ function Get-LengthCheckResult {
     param ([string]$CIdentifier)
 
     $Sections = $CIdentifier.Split('_')
-    
+
+    # Find the maximum length of the section text
+    $maxSectionLength = 0
+    foreach ($Section in $Sections) {
+        if ($Section.Length -gt $maxSectionLength) {
+            $maxSectionLength = $Section.Length
+        }
+    }
+    # Estimate width in pixels (approx. 9px per character, min 150px)
+    $sectionWidth = [Math]::Max($maxSectionLength * 9, 150)
+
     $Result = @"
 <div style='display:inline-block; text-align:left; border:1px solid #ccc;'>
-    <div style='font-weight:bold; text-align:center; color:#486350; padding:6px; ; border-bottom:1px solid #ccc;'>Length Check (<21)</div>
+    <div style='font-weight:bold; text-align:center; color:#486350; padding:6px; ; border-bottom:1px solid #ccc;'>Length Check (&lt;21)</div>
     <div style='display:flex; font-weight:bold; color:#486350; border-bottom:1px solid #ccc;'>
-        <div style='width:150px; padding:4px; border-right:1px solid #ccc;'>Section</div>
+        <div style='width:${sectionWidth}px; padding:4px; border-right:1px solid #ccc; word-break:break-all;'>Section</div>
         <div style='width:80px; padding:4px; border-right:1px solid #ccc;'>Length</div>
         <div style='width:80px; padding:4px;'>Status</div>
     </div>
@@ -300,7 +310,7 @@ function Get-LengthCheckResult {
 
         $Result += @"
     <div style='display:flex; color:$Color; border-bottom:1px solid #eee;'>
-        <div style='width:150px; padding:4px; border-right:1px solid #ccc;'>$Section</div>
+       <div style='width:${sectionWidth}px; padding:4px; border-right:1px solid #ccc;'>$Section</div>
         <div style='width:80px; padding:4px; border-right:1px solid #ccc;'>$Length</div>
         <div style='width:80px; padding:4px;'>$Status</div>
     </div>
@@ -750,13 +760,13 @@ $uriCountTracking = "https://sgpvmc0521.apac.bosch.com:8443/portal/api/tracking/
 $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
 [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
 try {
-    $resp = Invoke-WebRequest $uriFeatureTracking -Method GET -TimeoutSec 10 
+    $resp = Invoke-WebRequest $uriFeatureTracking -Method GET -TimeoutSec 10 -UseBasicParsing
     }
     catch {
         Write-Output "    Tool tracking failed 01"
     }
     try {
-     $resp =Invoke-WebRequest $uriCountTracking -Method GET -TimeoutSec 10
+     $resp = Invoke-WebRequest $uriCountTracking -Method GET -TimeoutSec 10 -UseBasicParsing
     }
     catch {
         Write-Output "    Tool tracking failed 02"
