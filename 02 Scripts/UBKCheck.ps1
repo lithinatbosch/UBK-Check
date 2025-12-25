@@ -22,7 +22,7 @@ if($PavastFilePath -ne "")
 {
 if(Test-Path $PavastFilePath -PathType leaf){
 
-if($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml"){$Ready = $False}Else{"Please enter a valid pavast path"}
+if(($PavastFilePath.Substring($PavastFilePath.Length - 11) -eq "_pavast.xml") -or ($PavastFilePath.Substring($PavastFilePath.Length - 15) -eq "_specpavast.xml")){$Ready = $False}Else{"Please enter a valid pavast path"}
 
 }
 else{"Please enter a valid pavast path"}
@@ -74,6 +74,7 @@ function Get-Comparepp {
         }
 
    if($pp -eq 'r'){$Result = "<p style='color:Orange'> $pp -  'r'=resistance, 'rat'=ratio </p>"}
+   if($pp -eq 'mask'){$Result = "<p style='color:Orange'> $pp -  only valid for signal qualifier(Sq) mask calibrations</p>"}
    return $Result
     }
 
@@ -320,7 +321,7 @@ while ($Counter -lt $Messages.Length) {
 
     #Checking last part of message if it is present
     if($MessageParts.Length -gt 2){
-       if(($MessageParts[2] -ceq 'MP') -or ($MessageParts[2] -ceq 'f') -or ($MessageParts[2] -ceq 'msg') -or ($MessageParts[2] -ceq 'f_msg')){}else{$reportHTML += "<p style='color:red'>Allowed 'ExVar's are  MP | f | msg | f_msg </p>"}
+       if(($MessageParts[2] -ceq 'MP') -or ($MessageParts[2] -ceq 'f') -or ($MessageParts[2] -ceq 'Sq') -or ($MessageParts[2] -ceq 'msg') -or ($MessageParts[2] -ceq 'f_msg')){}else{$reportHTML += "<p style='color:red'>Allowed 'ExVar's are  MP | f | msg | f_msg | Sq </p>"}
     }
 
 
