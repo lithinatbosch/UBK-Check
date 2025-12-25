@@ -8,15 +8,15 @@
    | (___) || )___) )|  /  \ \  | (____/\| )   ( || (____/\| (____/\|  /  \ \
    (_______)|/ \___/ |_/    \/  (_______/|/     \|(_______/(_______/|_/    \/"
 "                 Tool for naming convention check"
-"                        Version : 1.8.5"
+"                        Version : 1.8.6"
 "    For help, suggestions and improvements please contact 'lpd5kor'" 
 
-$current_version = "1.8.5"
+$current_version = "1.8.6"
 $Script:htmlPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\report.html"
 $DownloadToolPath= "C:\Users\"+$env:USERNAME.ToLower()+"\Desktop\"
 $script:UBKDownlaodPath = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\ubk_keywords.csv"
 $script:UBKDownloadFolder = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\"
-$IniFilePath = "\\bosch.com\dfsrb\DfsIN\LOC\Kor\BE-ES\EEI_EC\05_Global\02_External\Tools\UBKCheck\ubkcheck_current_ver.ini"
+$IniFilePath = "\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\ubkcheck_current_ver.ini"
 $script:DailyCheckIni = "C:\Users\"+$env:USERNAME.ToLower()+"\AppData\Local\Temp\daily_check.ini"
 
 #Daily update check and UBK database downloader
