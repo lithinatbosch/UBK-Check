@@ -246,8 +246,8 @@ function Get-ContinuousCapitalArray {
         }
         else {
             # When encountering a non-uppercase character, check for a sequence
-            if ($newtext.Length -gt 3) {
-                # Add to return array only if the sequence is more than 3 characters
+            if ($newtext.Length -gt 2) {
+                # Add to return array only if the sequence is more than 2 characters
                 $ReturnArray += $newtext.SubString(0,$newtext.Length -1)
             }
             # Reset temporary string after processing
@@ -408,6 +408,61 @@ function Get-Variables {
 
     Return $LocalVariables
 }
+function Get-AllClasses {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content $PavastFilePath)
+
+ 
+    $AllClasses = @()
+    foreach ($class in $PavastData.SelectNodes("//SW-COMPONENT-SPEC/SW-COMPONENTS/SW-CLASS[CATEGORY='CLASS']")) {
+        $className = $class.SelectSingleNode("SHORT-NAME").InnerText
+        
+        $classDetails = [PSCustomObject]@{
+            ClassName = $className
+            VariablePrototypes = @()
+            CalPrmPrototypes = @()
+        }
+        
+        foreach ($varProto in $class.SelectNodes(".//SW-VARIABLE-PROTOTYPES/SW-VARIABLE-PROTOTYPE")) {
+            $classDetails.VariablePrototypes += $varProto.SelectSingleNode("SHORT-NAME").InnerText
+        }
+        
+        foreach ($calProto in $class.SelectNodes(".//SW-CALPRM-PROTOTYPES/SW-CALPRM-PROTOTYPE")) {
+            $classDetails.CalPrmPrototypes += $calProto.SelectSingleNode("SHORT-NAME").InnerText
+        }
+        
+        $AllClasses += $classDetails
+    }
+    
+    Return $AllClasses
+}
+function Get-UserDefinedClasses {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content $PavastFilePath)
+
+    $UserDefinedClasses = @()
+    foreach ($classRef in $PavastData.SelectNodes("//SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CLASS-REFS/SW-CLASS-REF")) {
+        $UserDefinedClasses += $classRef.InnerText
+    }
+
+  return $UserDefinedClasses
+}
+
+function Get-ClassInstances {
+    param ([string]$PavastFilePath)
+    $PavastData = [xml](Get-Content $PavastFilePath)
+
+    $ClassInstances = @()
+    foreach ($instance in $PavastData.SelectNodes("//SW-FEATURE/SW-DATA-DICTIONARY-SPEC/SW-CLASS-INSTANCES/SW-CLASS-INSTANCE")) {
+        $instanceDetails = [PSCustomObject]@{
+            InstanceName = $instance.SelectSingleNode("SHORT-NAME").InnerText
+            ClassRef = $instance.SelectSingleNode("SW-CLASS-REF").InnerText
+        }
+        $ClassInstances += $instanceDetails
+    }
+
+    return $ClassInstances
+}
 
 function Get-FCName {
     param ([string]$PavastFilePath)
@@ -498,6 +553,165 @@ function Get-AnalysisTable{
     Return $Result
 }
 
+function Get-AnalysisUserDefinedClasses{
+    param ([string[]]$UserDefinedClasses, [PSCustomObject[]]$AllClasses, [string[]]$ExCalArray, [string[]]$ExVarArray, [Boolean]$BaseCompareActive, [PSCustomObject[]]$BaseAllClasses)
+    
+    $Result = ""
+    $idVariable = "userclasses"
+    $Result = "<table id='$idVariable'><thead><tr><th>User Defined Classes</th><th>Findings</th></tr></thead><tbody>"
+    
+    foreach ($ClassItem in $AllClasses) {
+        # Check if this class is in the UserDefinedClasses array
+        if ($UserDefinedClasses -notcontains $ClassItem.ClassName) {
+            continue
+        }
+        
+        # Add class name row
+        $Result += "<tr><td colspan='2' style='background-color:#d3d3d3; font-weight:bold; text-align:center;'>Class: $($ClassItem.ClassName)</td></tr>"
+        
+        # Process VariablePrototypes
+        if ($ClassItem.VariablePrototypes.Count -gt 0) {
+            $Result += "<tr><td colspan='2' style='background-color:#e8e8e8; font-weight:bold;'>Variable Prototypes</td></tr>"
+            
+            foreach ($Variable in $ClassItem.VariablePrototypes) {
+                # Splitting the variable parts
+                $VariableParts = @()
+                $VariableParts = $Variable.Split('_')
+             
+                # First column - check if variable exists in base
+                if (!$BaseCompareActive) {
+                    $Result += '<tr><td>' + $Variable + '</td><td>'
+                }
+                else {
+                    # Find if this variable exists in the corresponding base class
+                    $baseClass = $BaseAllClasses | Where-Object { $_.ClassName -eq $ClassItem.ClassName }
+                    if ($baseClass -and ($baseClass.VariablePrototypes -contains $Variable)) {
+                        $Result += '<tr><td>' + $Variable + '</td><td>'
+                    }
+                    else {
+                        $Result += '<tr style="background-color:#aafa93"><td>' + $Variable + '</td><td>'
+                    }
+                }
+                
+                # Checking number of underscores
+                if ($VariableParts.Length -gt 2) {
+                    $Result += "<p style='color:red'>DGS recommend maximum of 1 '_'s, in the variable prototype. No other checks executed.</p>" 
+                    $Result += '</td></tr>'
+                    Continue 
+                }
+                
+                # Checking last part if present (ExVar validation)
+                if ($VariableParts.Length -gt 1) {
+                    if ($ExVarArray -contains $VariableParts[1]) {
+                    } else {
+                        $Result += "<p style='color:red'>" + $VariableParts[1] + " is not a valid 'ExVar', so no other checks executed.</p>"
+                        continue 
+                    }
+                }
+                
+                # Splitting the first part
+                [String[]]$SplittedVariable = Get-SplittedArray($VariableParts[0])
+               
+                # Checking <pp>    
+                $Result += Get-Comparepp -pp $SplittedVariable[0]
+            
+                # Checking descriptive name
+                $VariableCounter = 1
+                while ($VariableCounter -lt $SplittedVariable.Length) {
+                    $Result += Get-CompareDescriptiveName -DescriptiveName $SplittedVariable[$VariableCounter]
+                    $VariableCounter++
+                }
+
+                # Continuous Capital letter check
+                [String[]]$SplittedVariable = Get-ContinuousCapitalArray -Unsplitted $VariableParts[0]
+                    
+                if ($SplittedVariable.Length -gt 0) { $Result += "<p><u>Continuous capital letter check</u></p>" }
+                
+                $MessageCounter = 0
+                while ($MessageCounter -lt $SplittedVariable.Length) {
+                    $Result += Get-CompareCapitalName -DescriptiveName $SplittedVariable[$MessageCounter]
+                    $MessageCounter++
+                }
+                          
+                # Length check
+                $Result += Get-LengthCheckResult -CIdentifier $VariableParts[0]
+                $Result += '</td></tr>'
+            }
+        }
+        
+        # Process CalPrmPrototypes
+        if ($ClassItem.CalPrmPrototypes.Count -gt 0) {
+            $Result += "<tr><td colspan='2' style='background-color:#e8e8e8; font-weight:bold;'>Calibration Parameter Prototypes</td></tr>"
+            
+            foreach ($Variable in $ClassItem.CalPrmPrototypes) {
+                # Splitting the calibration parts
+                $VariableParts = @()
+                $VariableParts = $Variable.Split('_')
+             
+                # First column - check if calibration exists in base
+                if (!$BaseCompareActive) {
+                    $Result += '<tr><td>' + $Variable + '</td><td>'
+                }
+                else {
+                    # Find if this calibration exists in the corresponding base class
+                    $baseClass = $BaseAllClasses | Where-Object { $_.ClassName -eq $ClassItem.ClassName }
+                    if ($baseClass -and ($baseClass.CalPrmPrototypes -contains $Variable)) {
+                        $Result += '<tr><td>' + $Variable + '</td><td>'
+                    }
+                    else {
+                        $Result += '<tr style="background-color:#aafa93"><td>' + $Variable + '</td><td>'
+                    }
+                }
+             
+                # Checking number of underscores for calibrations
+                if ($VariableParts.Length -ne 2) {
+                    $Result += "<p style='color:red'>Should have exact 1 '_'s in the name.<br>No other checks executed</p>"
+                    $Result += '</td></tr>'
+                    Continue
+                }
+
+                # Checking last part (ExCal validation)
+                if ($ExCalArray -contains $VariableParts[1]) {
+                } else {
+                    $Result += "<p style='color:red'>" + $VariableParts[1] + " is not a valid 'EXCal', so no other checks executed.</p>"
+                    continue 
+                }
+               
+                # Splitting the first part
+                [String[]]$SplittedVariable = Get-SplittedArray($VariableParts[0])
+               
+                # Checking <pp>    
+                $Result += Get-Comparepp -pp $SplittedVariable[0]
+            
+                # Checking descriptive name
+                $VariableCounter = 1
+                while ($VariableCounter -lt $SplittedVariable.Length) {
+                    $Result += Get-CompareDescriptiveName -DescriptiveName $SplittedVariable[$VariableCounter]
+                    $VariableCounter++
+                }
+                
+                # Continuous Capital letter check
+                [String[]]$SplittedVariable = Get-ContinuousCapitalArray -Unsplitted $VariableParts[0]
+                    
+                if ($SplittedVariable.Length -gt 0) { $Result += "<p><u>Continuous capital letter check</u></p>" }
+                
+                $MessageCounter = 0
+                while ($MessageCounter -lt $SplittedVariable.Length) {
+                    $Result += Get-CompareCapitalName -DescriptiveName $SplittedVariable[$MessageCounter]
+                    $MessageCounter++
+                }
+                          
+                # Length check
+                $Result += Get-LengthCheckResult -CIdentifier $VariableParts[0]
+                $Result += '</td></tr>'
+            }
+        }
+    }
+    
+    $Result += "</tbody></table>"
+    Return $Result
+}
+
 
 Write-Output "    Reading pavast..."
 
@@ -505,16 +719,23 @@ Write-Output "    Reading pavast..."
 [String[]]$Calibrations = @()
 [String[]]$Messages = @()
 [String[]]$Variables = @()
+[String[]]$UserDefinedClasses = @()
+[PSCustomObject[]]$AllClasses = @()
+[PSCustomObject[]]$ClassInstances = @()
 
 [String[]]$BaseCalibrations = @()
 [String[]]$BaseMessages = @()
 [String[]]$BaseVariables = @()
-
-
+[String[]]$BaseUserDefinedClasses = @()
+[PSCustomObject[]]$BaseAllClasses = @()
+[PSCustomObject[]]$BaseClassInstances = @()
 $FCName = Get-FCName($PavastFilePath)
 $Messages = Get-Messages($PavastFilePath)
 $Calibrations = Get-Calibrations($PavastFilePath)
 $Variables = Get-Variables($PavastFilePath)
+$UserDefinedClasses = Get-UserDefinedClasses($PavastFilePath)
+$AllClasses = Get-AllClasses($PavastFilePath)
+$ClassInstances = Get-ClassInstances($PavastFilePath)
 
 #Reading Base pavast file
 if ($BaseCompareActive) {
@@ -526,6 +747,9 @@ if ($BaseCompareActive) {
         $BaseMessages = Get-Messages($BasePavastFilePath)
         $BaseCalibrations = Get-Calibrations($BasePavastFilePath)
         $BaseVariables = Get-Variables($BasePavastFilePath)
+        $BaseUserDefinedClasses = Get-UserDefinedClasses($BasePavastFilePath)
+        $BaseAllClasses = Get-AllClasses($BasePavastFilePath)
+        $BaseClassInstances = Get-ClassInstances($BasePavastFilePath)
     }
 }
 
@@ -627,9 +851,6 @@ border-color: #4cae4c;
 <p class='fcname'>$FCName</p>"
 
 $ExVarMessageArray = @("MP","f","msg","f_msg", "Sq")
-# $ExVarVariableArray = @('c','p','a','en','un','st','pfn','cb8','pb8','ab8','cb16','pb16','ab16','cb32','pb32','ab32','cu8',
-#                         'pu8','au8','cu16','pu16','au16','cu32','pu32','au32','cu64','pu64','au64','cui','pui','aui','cs8','ps8','as8',
-#                         'cs16','ps16','as16','cs32','ps32','as32','cs64','ps64','as64','csi','psi','asi','cr32','pr32','ar32')
 $ExVarVariableArray = @("MP","f","msg","f_msg")
 $ExVarCalibArray = @('C','CA','T','FT','GT','M','FM','GM','AX','ASC')
 
@@ -642,6 +863,10 @@ $reportHTML += Get-AnalysisTable -VariableArray $Variables -VariableType "Variab
 $reportHTML += '<br><br>'
 Write-Output "    Analyzing calibrations..."
 $reportHTML += Get-AnalysisTable -VariableArray $Calibrations -VariableType "Calibrations" -IdIn $Id -ExVarArray $ExVarCalibArray -ExVarType "ExCal" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseCalibrations
+$reportHTML += '<br><br>'
+Write-Output "    Analyzing user defined classes..."
+$reportHTML += Get-AnalysisUserDefinedClasses -UserDefinedClasses $UserDefinedClasses -AllClasses $AllClasses -ExCalArray $ExVarCalibArray -ExVarArray $ExVarVariableArray -BaseCompareActive $BaseCompareActive -BaseAllClasses $BaseAllClasses  
+
 
 $reportHTML += '</div><script>
 function ShowIUnderstandCheck() {

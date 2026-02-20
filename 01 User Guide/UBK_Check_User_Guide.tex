@@ -1,0 +1,68 @@
+%%=============================================================================
+% Minimal template for LaTeX document in Bosch Corporate Design
+% for Bosch LaTeX Style v3.4
+% Author:       Adapted for UBK Check User Guide
+%%=============================================================================
+\documentclass[11pt,headings=small]{scrartcl}
+
+\usepackage[]{bosch}
+\pagestyle{boschrep} % Bosch report page style
+
+% confidentiality class from -1 (no footer) to 3 (strictly confidential)
+\RBconfidentiality{1}
+
+\RBtitleA{UBK Check Tool}
+\RBtitleB{User Guide}
+\RBtitleC{}
+
+\RBversion{1.0.0}
+\RBdate{}% leave empty to set date automatically
+\RBpage{LinkLast}% { | Simple | Last | LinkLast }
+
+% author information
+\RBdepartmentA{BGSW/EEI}
+\RBauthorA{Automation Team}
+
+\begin{document}
+\twocolumn
+
+\paragraph{UBK Check Tool}
+The UBK Check tool is designed to automate the validation process for UBK checks. It simplifies the workflow by providing scripts that can be executed directly from the local system, ensuring accuracy and efficiency.
+
+\paragraph{Initial Setup}
+\begin{itemize}
+    \item Clone the repository to your local machine.
+    \item Ensure that PowerShell v5.1 or higher is installed on your system.
+    \item Navigate to the `02 Scripts` folder to access the scripts.
+\end{itemize}
+
+\paragraph{Usage}
+The tool can be executed using the following steps:
+\begin{itemize}
+    \item Open PowerShell and navigate to the `02 Scripts` folder.
+    \item Run the desired script using the command:
+    \begin{verbatim}
+    .\<script_name>.ps1
+    \end{verbatim}
+    Replace  with the name of the script you want to execute.
+\end{itemize}
+
+\paragraph{Scripts Overview}
+
+
+\paragraph{Command Line Mode}
+The scripts can also be executed in command-line mode with specific parameters. For example:
+\begin{verbatim}
+PowerShell -File .\UBKCheck.ps1 -Parameter1 Value1 -Parameter2 Value2
+\end{verbatim}
+
+\paragraph{Additional Notes}
+\begin{itemize}
+    \item Ensure that all prerequisites are met before running the scripts.
+    \item Refer to the `README.md` file for more detailed instructions.
+\end{itemize}
+
+\paragraph{Support}
+For any issues or contributions, please contact the Automation Team or submit a pull request to the repository.
+
+\end{document}
