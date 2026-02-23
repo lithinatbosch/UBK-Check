@@ -412,6 +412,9 @@ function Get-AllClasses {
     param ([string]$PavastFilePath)
     $PavastData = [xml](Get-Content $PavastFilePath)
 
+    $CodeGenerator = 'ASCET'
+    $code = $PavastData.SelectSingleNode("//MSRSW/ADMIN-DATA/COMPANY-DOC-INFOS/COMPANY-DOC-INFO/SDGS/SDG/SD[@GID='MATLAB-User']")
+    if ($code) { $CodeGenerator = 'MATLAB' }
  
     $AllClasses = @()
     foreach ($class in $PavastData.SelectNodes("//SW-COMPONENT-SPEC/SW-COMPONENTS/SW-CLASS[CATEGORY='CLASS']")) {
@@ -439,8 +442,18 @@ function Get-AllClasses {
 function Get-UserDefinedClasses {
     param ([string]$PavastFilePath)
     $PavastData = [xml](Get-Content $PavastFilePath)
+    $CodeGenerator = 'ASCET'
+    $code = $PavastData.SelectSingleNode("//MSRSW/ADMIN-DATA/COMPANY-DOC-INFOS/COMPANY-DOC-INFO/SDGS/SDG/SD[@GID='MATLAB-User']")
+    if ($code) { $CodeGenerator = 'MATLAB' }
 
     $UserDefinedClasses = @()
+    if($CodeGenerator -eq 'MATLAB') {
+        foreach ($classRef in $PavastData.SelectNodes("//SW-FEATURE/SW-FEATURE-OWNED-ELEMENT-SETS/SW-FEATURE-OWNED-ELEMENT-SET/SW-FEATURE-ELEMENTS/SW-CLASS-REFS/SW-CLASS-REF")) {
+            $UserDefinedClasses += $classRef.InnerText
+        }
+        return $UserDefinedClasses
+    }
+
     foreach ($classRef in $PavastData.SelectNodes("//SW-FEATURE-OWNED-ELEMENTS/SW-FEATURE-ELEMENTS/SW-CLASS-REFS/SW-CLASS-REF")) {
         $UserDefinedClasses += $classRef.InnerText
     }
@@ -451,8 +464,21 @@ function Get-UserDefinedClasses {
 function Get-ClassInstances {
     param ([string]$PavastFilePath)
     $PavastData = [xml](Get-Content $PavastFilePath)
+    $CodeGenerator = 'ASCET'
+    $code = $PavastData.SelectSingleNode("//MSRSW/ADMIN-DATA/COMPANY-DOC-INFOS/COMPANY-DOC-INFO/SDGS/SDG/SD[@GID='MATLAB-User']")
+    if ($code) { $CodeGenerator = 'MATLAB' }
 
     $ClassInstances = @()
+    if($CodeGenerator -eq 'MATLAB') {
+        foreach ($instance in $PavastData.SelectNodes("//SW-SYSTEMS/SW-SYSTEM/SW-DATA-DICTIONARY-SPEC/SW-CLASS-INSTANCES/SW-CLASS-INSTANCE")) {
+            $instanceDetails = [PSCustomObject]@{
+                InstanceName = $instance.SelectSingleNode("SHORT-NAME").InnerText
+                ClassRef = $instance.SelectSingleNode("SW-CLASS-REF").InnerText
+            }
+            $ClassInstances += $instanceDetails
+        }
+        return $ClassInstances
+    }
     foreach ($instance in $PavastData.SelectNodes("//SW-FEATURE/SW-DATA-DICTIONARY-SPEC/SW-CLASS-INSTANCES/SW-CLASS-INSTANCE")) {
         $instanceDetails = [PSCustomObject]@{
             InstanceName = $instance.SelectSingleNode("SHORT-NAME").InnerText
@@ -711,7 +737,147 @@ function Get-AnalysisUserDefinedClasses{
     $Result += "</tbody></table>"
     Return $Result
 }
+function Get-AnalysisClassInstance {
+    param (
+        [string[]]$UserDefinedClasses,
+        [PSCustomObject[]]$AllClasses,
+        [PSCustomObject[]]$ClassInstances,
+        [string]$IdIn,
+        [Boolean]$BaseCompareActive,
+        [PSCustomObject[]]$BaseClassInstances,
+        [PSCustomObject[]]$ClassInstanceExtensions
+    )
+    
+    $Result = ""
+    $idVariable = "classinstances"
+    $Result = "<table id='$idVariable'><thead><tr><th>Class Instances</th><th>Findings</th></tr></thead><tbody>"
+    foreach ($Instance in $ClassInstances) {
+        # Check if the instance's class exists in AllClasses
+        # Determine the expected extension for this class instance
+        $extension = $null
+        # Check if this is a user-defined class
+        if ($UserDefinedClasses -contains $Instance.ClassRef) {
+                $classDefinition = $AllClasses | Where-Object { $_.ClassName -eq $Instance.ClassRef }
+                # User-defined classes with VariablePrototypes use "_I" extension
+                if ($classDefinition -and $classDefinition.VariablePrototypes.Count -gt 0) {
+                    $extension = "_I"
+                }
+            }
+            else {
+                # For predefined classes, look up the extension from the mapping table
+                $extensionMapping = $ClassInstanceExtensions | Where-Object { $_.ClassDefinition -eq $Instance.ClassRef }
+            if ($extensionMapping) {
+                $extension = $extensionMapping.Extension
+                $classDefinition = $AllClasses | Where-Object { $_.ClassName -eq $Instance.ClassRef }
+                if ($classDefinition -and $classDefinition.VariablePrototypes.Count -gt 0) {
+                    $extension = $extension + "_I"
+                }
+            }   
+        }
 
+       
+        
+        # First column - check if instance exists in base
+        if (!$BaseCompareActive) {
+            $Result += '<tr><td>' + $Instance.InstanceName + '</td><td>'
+        }
+        else {
+            # Check if this instance exists in base class instances
+            $baseInstance = $BaseClassInstances | Where-Object { $_.InstanceName -eq $Instance.InstanceName }
+            if ($baseInstance) {
+                $Result += '<tr><td>' + $Instance.InstanceName + '</td><td>'
+            }
+            else {
+                $Result += '<tr style="background-color:#aafa93"><td>' + $Instance.InstanceName + '</td><td>'
+            }
+        }
+       
+
+         # Special case for Efx/Mfl_DebounceState_Type - check for specific suffixes
+        if ($Instance.ClassRef -eq "Efx_DebounceState_Type" -or $Instance.ClassRef -eq "Mfl_DebounceState_Type") {
+            $validSuffixes = @("TON_I", "TOFF_I", "DEB_I")
+            $hasValidSuffix = $false
+            foreach ($suffix in $validSuffixes) {
+            if ($Instance.InstanceName.EndsWith($suffix)) {
+                $hasValidSuffix = $true
+                $extension = $suffix
+                break
+            }
+            }
+            
+            if (-not $hasValidSuffix) {
+            $Result += "<p style='color:red'>Instance of class '" + $Instance.ClassRef + "' should end with one of the following suffixes: " + ($validSuffixes -join ", ") + ".
+            No other checks executed.</p>"
+            continue
+            }
+        }
+
+
+        
+        # Splitting the instance name parts
+        $ClassinstanceWithoutExtension = $Instance.InstanceName.Replace($extension, "")
+        $InstanceParts = @()
+        $InstanceParts = $ClassinstanceWithoutExtension.Split('_')
+
+
+        # Checking number of underscores
+        if ($InstanceParts.Length -gt 2 -or $InstanceParts.Length -lt 1) {
+            $Result += "<p style='color:red'>DGS recommend maximum of 2 '_' and minimum of 1 '_'s in class instance name. No other checks executed.</p>"
+            $Result += '</td></tr>'
+            Continue
+        }
+        
+        # Checking <Id> matching
+        $Result += Get-IdCompareResult -MessagePartIn $InstanceParts[0] -idIn $IdIn
+        
+        # If there's a second part, analyze it
+        if ($InstanceParts.Length -gt 1) {
+            # Splitting the second part
+            [String[]]$SplittedInstance = Get-SplittedArray($InstanceParts[1])
+            
+            # Checking descriptive names
+            $InstanceCounter = 0
+            while ($InstanceCounter -lt $SplittedInstance.Length) {
+                $Result += Get-CompareDescriptiveName -DescriptiveName $SplittedInstance[$InstanceCounter]
+                $InstanceCounter++
+            }
+            
+            # Continuous Capital letter check
+            [String[]]$ContinuousCapitals = Get-ContinuousCapitalArray -Unsplitted $InstanceParts[1]
+            
+            if ($ContinuousCapitals.Length -gt 0) { 
+                $Result += "<p><u>Continuous capital letter check</u></p>" 
+            }
+            
+            $CapitalCounter = 0
+            while ($CapitalCounter -lt $ContinuousCapitals.Length) {
+                $Result += Get-CompareCapitalName -DescriptiveName $ContinuousCapitals[$CapitalCounter]
+                $CapitalCounter++
+            }
+        }
+         # Extension check
+        if ($null -ne $extension) {
+            if ($Instance.InstanceName.EndsWith($extension)) {
+                $Result += "<p style='color:green'>$extension - Extension check Passed</p>"
+            }
+            else {
+                $Result += "<p style='color:red'>Extension check Failed - Instance should end with '$extension'</p>"
+            }
+        }
+        else {
+            if ($Instance.InstanceName.EndsWith("_I")) {
+                $Result += "<p style='color:red'>Extension check - Instance should not end with '_I' when no memory element inside the class.</p>"
+            }
+            else {
+            }
+        }
+        # Length check
+        $Result += Get-LengthCheckResult -CIdentifier $ClassinstanceWithoutExtension
+        $Result += '</td></tr>'
+    }  
+    $Result += "</tbody></table>"
+    Return $Result
+}
 
 Write-Output "    Reading pavast..."
 
@@ -736,6 +902,135 @@ $Variables = Get-Variables($PavastFilePath)
 $UserDefinedClasses = Get-UserDefinedClasses($PavastFilePath)
 $AllClasses = Get-AllClasses($PavastFilePath)
 $ClassInstances = Get-ClassInstances($PavastFilePath)
+$ClassInstanceExtensions = @(
+    [PSCustomObject]@{ ClassDefinition = "TimerRetrigger"; Extension = "TR" }
+    [PSCustomObject]@{ ClassDefinition = "IpolDelta"; Extension = "ID" }
+    [PSCustomObject]@{ ClassDefinition = "Median_5"; Extension = "M5" }
+    [PSCustomObject]@{ ClassDefinition = "Modulo"; Extension = "MOD" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Abs"; Extension = "ABS" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_AbsDiff"; Extension = "ABSD" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_AbsLimit"; Extension = "ABSL" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Average"; Extension = "AVRG" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_AvrgArr"; Extension = "AVRGA" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Mod"; Extension = "MODZ" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_MulAdd"; Extension = "MA" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_MulDiv"; Extension = "MD" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_MulShRight"; Extension = "MSR" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Sqrt"; Extension = "SQRT" }
+    [PSCustomObject]@{ ClassDefinition = "IntegratorK"; Extension = "IK" }
+    [PSCustomObject]@{ ClassDefinition = "IntegratorKEnabled"; Extension = "IKE" }
+    [PSCustomObject]@{ ClassDefinition = "IntegratorKLimited"; Extension = "IKL" }
+    [PSCustomObject]@{ ClassDefinition = "IntegratorT"; Extension = "IT" }
+    [PSCustomObject]@{ ClassDefinition = "IntegratorTEnabled"; Extension = "ITE" }
+    [PSCustomObject]@{ ClassDefinition = "IntegratorTLimited"; Extension = "ITL" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IntLimParam_t"; Extension = "INTLt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Int"; Extension = "INT" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IntLimt"; Extension = "INTL" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IWinParam_t"; Extension = "IWt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Iwin"; Extension = "IW" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_PIWin"; Extension = "PIW" }
+    [PSCustomObject]@{ ClassDefinition = "DigitalLowpass"; Extension = "DL" }
+    [PSCustomObject]@{ ClassDefinition = "LowpassK"; Extension = "LK" }
+    [PSCustomObject]@{ ClassDefinition = "LowpassKEnabled"; Extension = "LKE" }
+    [PSCustomObject]@{ ClassDefinition = "LowpassT"; Extension = "LT" }
+    [PSCustomObject]@{ ClassDefinition = "LowpassTEnabled"; Extension = "LTE" }
+    [PSCustomObject]@{ ClassDefinition = "SrvF_PT1Param_t"; Extension = "PT1t" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_PT1"; Extension = "PT1" }
+    [PSCustomObject]@{ ClassDefinition = "SrvF_PT1"; Extension = "FPT1" }
+    [PSCustomObject]@{ ClassDefinition = "ClosedInterval"; Extension = "CI" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IntervClsd"; Extension = "CI" }
+    [PSCustomObject]@{ ClassDefinition = "GreaterZero"; Extension = "GZ" }
+    [PSCustomObject]@{ ClassDefinition = "LeftOpenInterval"; Extension = "LOI" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IntervLOpn"; Extension = "LOI" }
+    [PSCustomObject]@{ ClassDefinition = "OpenInterval"; Extension = "OI" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IntervOpn"; Extension = "OI" }
+    [PSCustomObject]@{ ClassDefinition = "RightOpenInterval"; Extension = "ROI" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_IntervROpn"; Extension = "ROI" }
+    [PSCustomObject]@{ ClassDefinition = "Counter_Timer"; Extension = "CD" }
+    [PSCustomObject]@{ ClassDefinition = "CountDownEnabled"; Extension = "CDE" }
+    [PSCustomObject]@{ ClassDefinition = "Counter"; Extension = "CTR" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Counter"; Extension = "CTR" }
+    [PSCustomObject]@{ ClassDefinition = "CounterEnabled"; Extension = "CE" }
+    [PSCustomObject]@{ ClassDefinition = "StopWatch"; Extension = "SW" }
+    [PSCustomObject]@{ ClassDefinition = "StopWatchEnabled"; Extension = "SWE" }
+    [PSCustomObject]@{ ClassDefinition = "Timer"; Extension = "T" }
+    [PSCustomObject]@{ ClassDefinition = "TimerEnabled"; Extension = "TE" }
+    [PSCustomObject]@{ ClassDefinition = "TimerRetriggerEnabled"; Extension = "TRE" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_SWTmr"; Extension = "SWT" }
+    [PSCustomObject]@{ ClassDefinition = "Delay"; Extension = "DS" }
+    [PSCustomObject]@{ ClassDefinition = "DelaySignalEnabled"; Extension = "DSE" }
+    [PSCustomObject]@{ ClassDefinition = "DelayValue"; Extension = "DV" }
+    [PSCustomObject]@{ ClassDefinition = "DelayValueEnabled"; Extension = "DVE" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOffDelay"; Extension = "TOFF" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOnDelay"; Extension = "TON" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOffDelayvariable"; Extension = "TOFFV" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOnDelayvariable"; Extension = "TONV" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOffDelayvariableNoMem"; Extension = "TOFFVNM" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOnDelayvariableNoMem"; Extension = "TONVNM" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_TrnOffDly"; Extension = "TOffD" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOnDelayA"; Extension = "TOnD" }
+    [PSCustomObject]@{ ClassDefinition = "TurnOffDelayA"; Extension = "TOffD" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_TrnOnDly"; Extension = "TOnD" }
+    [PSCustomObject]@{ ClassDefinition = "DelayTime"; Extension = "DTds" }
+    [PSCustomObject]@{ ClassDefinition = "DelayTime_dsoptimized"; Extension = "DTdsOpt" }
+    [PSCustomObject]@{ ClassDefinition = "DelayTime_Tt"; Extension = "DTTt" }
+    [PSCustomObject]@{ ClassDefinition = "DelayTime_Tt optimized"; Extension = "DTTtOpt" }
+    [PSCustomObject]@{ ClassDefinition = "Memory"; Extension = "A" }
+    [PSCustomObject]@{ ClassDefinition = "AccumulatorEnabled"; Extension = "AE" }
+    [PSCustomObject]@{ ClassDefinition = "AccumulatorLimited"; Extension = "AL" }
+    [PSCustomObject]@{ ClassDefinition = "RSFlipFlop"; Extension = "FF" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_RSFF"; Extension = "FF" }
+    [PSCustomObject]@{ ClassDefinition = "DeltaOneStep"; Extension = "DOS" }
+    [PSCustomObject]@{ ClassDefinition = "EdgeBi"; Extension = "EB" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_EgeBipol"; Extension = "EB" }
+    [PSCustomObject]@{ ClassDefinition = "EdgeBiNoMem"; Extension = "EBNM" }
+    [PSCustomObject]@{ ClassDefinition = "EdgeFalling"; Extension = "EF" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_EdgeFalling"; Extension = "EF" }
+    [PSCustomObject]@{ ClassDefinition = "EdgeFallingNoMem"; Extension = "EFNM" }
+    [PSCustomObject]@{ ClassDefinition = "EdgeRising"; Extension = "ER" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_EdgeRising"; Extension = "ER" }
+    [PSCustomObject]@{ ClassDefinition = "EdgeRisingNoMem"; Extension = "ERNM" }
+    [PSCustomObject]@{ ClassDefinition = "Mux1of4"; Extension = "MUX4" }
+    [PSCustomObject]@{ ClassDefinition = "Mux1of8"; Extension = "MUX8" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_DebounceParam_t"; Extension = "DEBt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Debounce"; Extension = "DEB" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_RampParam_t"; Extension = "RMPt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Ramp"; Extension = "RMP" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_RampSwitch"; Extension = "RMPS" }
+    [PSCustomObject]@{ ClassDefinition = "Mx17_DSM"; Extension = "RTR" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_Delta_RSP"; Extension = "HDR" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_HystDR"; Extension = "HDR" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_Delta_RSP_SeqCall"; Extension = "HDRSC" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_LSP_Delta"; Extension = "HLD" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_HystLD"; Extension = "HLD" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_LSP_Delta_SeqCall"; Extension = "HLDSC" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_LSP_RSP"; Extension = "HLR" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_HystLR"; Extension = "HLR" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_LSP_RSP_SeqCall"; Extension = "HLRSC" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_HystCHD"; Extension = "HMD" }
+    [PSCustomObject]@{ ClassDefinition = "Hysteresis_MSP_DeltaHalf_SeqCall"; Extension = "HMDSC" }
+    [PSCustomObject]@{ ClassDefinition = "Limiter"; Extension = "LIM" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_Limit"; Extension = "LIM" }
+    [PSCustomObject]@{ ClassDefinition = "Signum"; Extension = "SGN" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_DT1Param_t"; Extension = "DT1t" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_DT1"; Extension = "DT1" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_DT1WinParam_t"; Extension = "DT1Wt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_DT1Win"; Extension = "DT1W" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_LimitParam_t"; Extension = "LIMt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_PWinParam_t"; Extension = "PWt" }
+    [PSCustomObject]@{ ClassDefinition = "Srv_PWin"; Extension = "PW" }
+    [PSCustomObject]@{ ClassDefinition = "Efx_DebounceState_Type"; Extension = "DEB" }
+    [PSCustomObject]@{ ClassDefinition = "Mfl_DebounceState_Type"; Extension = "DEB" }
+    [PSCustomObject]@{ ClassDefinition = "Mfl_StateRamp_Type"; Extension = "RMP" }
+    [PSCustomObject]@{ ClassDefinition = "Efx_StateRamp_Type"; Extension = "RMP" }
+    [PSCustomObject]@{ ClassDefinition = "Mfl_StatePT1_Type"; Extension = "PT1" }
+    [PSCustomObject]@{ ClassDefinition = "Mfl_StateDT1Typ1_Type"; Extension = "DT1" }
+    [PSCustomObject]@{ ClassDefinition = "Efx_StatePT1_Type"; Extension = "PT1" }
+    [PSCustomObject]@{ ClassDefinition = "SrvX_RampState_Type"; Extension = "RMP" }
+    [PSCustomObject]@{ ClassDefinition = "Efx_StateDT1Typ2_Type"; Extension = "DT1" }
+    [PSCustomObject]@{ ClassDefinition = "Efx_StateDT1Typ1_Type"; Extension = "DT1" }
+    [PSCustomObject]@{ ClassDefinition = "Mfl_StateI_Type"; Extension = "XX" }
+)
 
 #Reading Base pavast file
 if ($BaseCompareActive) {
@@ -835,9 +1130,10 @@ border-color: #4cae4c;
 <div id='Div1' class='warning'>
 <div class='warninghead' >Please note !</div>
 <ul style='color:#5e5e5e;text-align: left;padding:12px 12px 12px 30px;'>
-  <li style='padding-bottom:6px'>The created report can only be used as an additional reference for your implementation. A manual check of the variables are still advised.</li>
-  <li style='padding-bottom:6px'>If you are updating the name of existing variables(to fix the identified warning) extra care must be taken to check to see if it impacts anywhere else.</li>
-  <li>Class instance names and instance specific variables are not checked in the current tool.</li>
+  <li style='padding-bottom:6px'>This report is intended to serve as an additional reference for your implementation. A manual review of the variables is still strongly recommended.</li>
+  <li style='padding-bottom:6px'>When updating the names of existing variables (to address identified warnings), please ensure you carefully verify that the change does not affect other parts of the design.</li>
+<li style='padding-bottom:6px; color:red;'>Checks for class instance names and instance‑specific variables are currently in Beta.</li>
+    <li style='padding-bottom:6px; color:red;'>For MATLAB‑generated code, checks related to rising edges, falling edges, and flip‑flop detection cannot be performed.</li>
 </ul> 
 <button onclick='MakeVisible()' class ='understand'>I Understand</button></div>
 <div style='display: none;' id='Div2'>
@@ -863,6 +1159,9 @@ $reportHTML += Get-AnalysisTable -VariableArray $Variables -VariableType "Variab
 $reportHTML += '<br><br>'
 Write-Output "    Analyzing calibrations..."
 $reportHTML += Get-AnalysisTable -VariableArray $Calibrations -VariableType "Calibrations" -IdIn $Id -ExVarArray $ExVarCalibArray -ExVarType "ExCal" -BaseCompareActive $BaseCompareActive -BaseVariableArray $BaseCalibrations
+$reportHTML += '<br><br>'
+Write-Output "    Analyzing class instances..."
+$reportHTML += Get-AnalysisClassInstance -UserDefinedClasses $UserDefinedClasses -AllClasses $AllClasses -ClassInstances $ClassInstances -IdIn $Id -BaseCompareActive $BaseCompareActive -BaseClassInstances $BaseClassInstances -ClassInstanceExtensions $ClassInstanceExtensions  
 $reportHTML += '<br><br>'
 Write-Output "    Analyzing user defined classes..."
 $reportHTML += Get-AnalysisUserDefinedClasses -UserDefinedClasses $UserDefinedClasses -AllClasses $AllClasses -ExCalArray $ExVarCalibArray -ExVarArray $ExVarVariableArray -BaseCompareActive $BaseCompareActive -BaseAllClasses $BaseAllClasses  
@@ -907,8 +1206,8 @@ function ApplyFilter() {
 	var showSuggest = document.getElementById("CheckSuggest").checked;
 	var showErr = document.getElementById("CheckError").checked;
 	var showConfirm = document.getElementById("CheckWarning").checked;
-	var ids = ["messages", "variables", "calibrations"];
-    for (iCount =0; iCount <3; iCount++) {
+	var ids = ["messages", "variables", "calibrations","userclasses","classinstances"];
+    for (iCount =0; iCount <5; iCount++) {
 	FilterTable(document.getElementById(ids[iCount]), showok, showSuggest, showErr, showConfirm);
     }
 }
@@ -922,14 +1221,18 @@ function FilterTable(table, showok, showSuggest, showErr, showConfirm) {
 		var conf=false;
 		
 		var td = tr[r].getElementsByTagName("td");
-		if (td.length>0) {
+		if (td.length>1) {
 			var para = td[1].getElementsByTagName("p");
 			for (p=0;p<para.length; p++) {
 				if (para[p].style.color=="blue") {sugg=true;allok=false;}
 				if (para[p].style.color=="red") {errprs=true;allok=false;}
 				if (para[p].style.color=="orange") {conf=true;allok=false;}
 			}
-		} 
+		} else if (td.length==1) {
+			// Header rows with colspan - always show them
+			tr[r].style.display = "";
+			continue;
+		}
 		
 		if ((showok && allok) || (showSuggest && sugg) || (showErr && errprs) || (showConfirm && conf)) {
 			tr[r].style.display = "";
@@ -945,8 +1248,8 @@ var ErrorCount = 0;
 var WarningCount = 0;
 var AllOkCount = 0;
 var tableCalibrations;
-var ids = ["messages", "variables", "calibrations"];
-for (iCount =0; iCount <3; iCount++) {
+var ids = ["messages", "variables", "calibrations","userclasses","classinstances"];
+for (iCount =0; iCount <5; iCount++) {
  tableVariables = document.getElementById(ids[iCount]);
 
 var tr = tableVariables.getElementsByTagName("tr");
@@ -956,7 +1259,7 @@ var tr = tableVariables.getElementsByTagName("tr");
 		var errprs=false;
 		var conf=false;
 		var td = tr[r].getElementsByTagName("td");
-		if (td.length>0) {
+		if (td.length>1) {
 			var para = td[1].getElementsByTagName("p");
 			for (p=0;p<para.length; p++) {
 				if (para[p].style.color=="blue") {sugg=true;allok=false;}
