@@ -1,11 +1,24 @@
-﻿$ver = Read-Host "Enter new version"
-
-
+﻿
 $applicationName = "UBK Check"
+
+$fileName = "C:\Working_Directory\Automation\02 UBK check\02 Scripts\UBKCheckV$ver.exe"
+$inputFile = "C:\Working_Directory\Automation\02 UBK check\02 Scripts\UBKCheck.ps1"
+$iconFile = "C:\Working_Directory\Automation\02 UBK check\02 Scripts\icon.ico"
+
+$ver = Read-Host "Enter new version"
+
 $ZipFilePath = "C:\temp\UBKCheck.zip"
-$fileName = "C:\Users\lpd5kor\OneDrive - Bosch Group\001_Automation\02 UBK check\UBKCheckBetaV$ver.exe"
-$inputFile = "C:\Users\lpd5kor\OneDrive - Bosch Group\001_Automation\02 UBK check\UBKCheckBetaV"+ $ver + ".ps1"
-$iconFile = "C:\Users\lpd5kor\OneDrive - Bosch Group\001_Automation\02 UBK check\check-form_116472.ico"
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+$fileName = Join-Path $scriptDir ("UBKCheckV" + $ver + ".exe")
+$inputFile = Join-Path $scriptDir ("UBKCheck.ps1")
+$iconFile = Join-Path $scriptDir "icon.ico"
+
+
+# Update version number in UBKCheck.ps1
+$psContent = Get-Content $inputFile -Raw
+$psContent = $psContent -replace '\$current_version = "[^"]*"', "`$current_version = `"$ver`""
+Set-Content -Path $inputFile -Value $psContent -NoNewline
 
 &"C:\Users\lpd5kor\OneDrive - Bosch Group\001_Automation\PS2EXE-GUI\ps2exe.ps1" -inputFile $inputFile -outputFile $fileName  -STA -iconFile $iconFile -title $applicationName -description $applicationName -company 'BGSW' -product $applicationName -copyright 'LPD5KOR' -version $ver 
 
@@ -25,7 +38,7 @@ Set-Content -Path $iniFilePath -Value ""
 
 $content = @"
 $ver
-\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\UBKCheckBetaV$ver.exe
+\\SGPVMC0521.apac.bosch.com\CloudSearch\UBKCheck\PavastBased\UBKCheckV$ver.exe
 "@
 
 Set-Content -Path $iniFilePath -Value $content
